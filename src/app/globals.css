@@ -2,26 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --cream:   #F7F3EC;
+  --forest:  #1A6B3C;
+  --deep:    #0F3D22;
+  --amber:   #E8941A;
+  --amber2:  #C27A10;
+  --ink:     #1A1208;
+  --ash:     #8B7355;
+  --white:   #FDFAF5;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+  font-family: 'Inter', sans-serif;
+  background-color: var(--cream);
+  color: var(--ink);
 }
