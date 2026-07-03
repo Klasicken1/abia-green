@@ -12,7 +12,6 @@ export default function Home() {
           background: "linear-gradient(160deg, #0F3D22 0%, #1A6B3C 100%)",
         }}
       >
-        {/* Greeting */}
         <p className="text-sm mb-1" style={{ color: "rgba(253,250,245,0.55)" }}>
           Good morning,
         </p>
@@ -78,7 +77,6 @@ export default function Home() {
               </span>
             </div>
           </div>
-          {/* Chip */}
           <div
             className="w-10 h-7 rounded"
             style={{
@@ -103,10 +101,7 @@ export default function Home() {
               color: "#1A6B3C",
             }}
           >
-            <span
-              className="inline-block w-3.5 h-0.5"
-              style={{ background: "#1A6B3C" }}
-            />
+            <span className="inline-block w-3.5 h-0.5" style={{ background: "#1A6B3C" }} />
             Platform Modules
           </p>
           <div className="grid grid-cols-2 gap-3">
@@ -198,7 +193,7 @@ export default function Home() {
             <span className="inline-block w-3.5 h-0.5" style={{ background: "#C27A10" }} />
             Today&apos;s Activity
           </p>
-          <div className="grid grid-cols-3 divide-x" style={{ divideColor: "rgba(26,18,8,0.06)" }}>
+          <div className="grid grid-cols-3 divide-x divide-gray-100">
             <div className="text-center pr-2">
               <p
                 className="text-xl leading-none"

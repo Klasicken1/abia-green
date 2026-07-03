@@ -1,5 +1,4 @@
 import BottomNav from "@/components/BottomNav";
-import Link from "next/link";
 
 export default function ProfilePage() {
   return (

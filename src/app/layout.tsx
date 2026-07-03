@@ -1,5 +1,27 @@
 import type { Metadata, Viewport } from "next";
+import { DM_Serif_Display, Inter, Space_Mono } from "next/font/google";
 import "./globals.css";
+
+const dmSerif = DM_Serif_Display({
+  weight: ["400"],
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-serif",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const spaceMono = Space_Mono({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Abia Green",
@@ -25,13 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className={`${dmSerif.variable} ${inter.variable} ${spaceMono.variable}`}>
       <body className="bg-cream font-sans antialiased">
         <div className="max-w-md mx-auto min-h-screen relative bg-cream">
           {children}
