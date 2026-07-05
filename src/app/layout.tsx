@@ -29,8 +29,12 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Abia Green",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+    icon: "/icon-192.png",
   },
 };
 
@@ -39,6 +43,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -47,7 +52,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${dmSerif.variable} ${inter.variable} ${spaceMono.variable}`}>
+    <html
+      lang="en"
+      className={`${dmSerif.variable} ${inter.variable} ${spaceMono.variable}`}
+    >
       <body className="bg-cream font-sans antialiased">
         <div className="max-w-md mx-auto min-h-screen relative bg-cream">
           {children}
