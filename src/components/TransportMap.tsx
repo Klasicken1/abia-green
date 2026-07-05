@@ -10,9 +10,9 @@ const ROUTES = [
     name: "Umuahia → Aba",
     color: "#1A6B3C",
     coordinates: [
-      [7.4921, 5.5248],  // Umuahia
-      [7.4200, 5.3000],  // Midpoint
-      [7.3663, 5.1069],  // Aba
+      [7.4921, 5.5248],
+      [7.4200, 5.3000],
+      [7.3663, 5.1069],
     ],
   },
   {
@@ -20,9 +20,9 @@ const ROUTES = [
     name: "Umuahia → Ohafia",
     color: "#E8941A",
     coordinates: [
-      [7.4921, 5.5248],  // Umuahia
-      [7.7000, 5.6200],  // Midpoint
-      [7.8271, 5.6258],  // Ohafia
+      [7.4921, 5.5248],
+      [7.7000, 5.6200],
+      [7.8271, 5.6258],
     ],
   },
 ];
@@ -38,6 +38,7 @@ export default function TransportMap() {
   const map = useRef<mapboxgl.Map | null>(null);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     if (map.current || !mapContainer.current) return;
 
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
@@ -45,14 +46,13 @@ export default function TransportMap() {
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/light-v11",
-      center: [7.4921, 5.5248], // Umuahia
+      center: [7.4921, 5.5248],
       zoom: 9,
     });
 
     map.current.on("load", () => {
       if (!map.current) return;
 
-      // Draw each route
       ROUTES.forEach((route) => {
         map.current!.addSource(route.id, {
           type: "geojson",
@@ -82,7 +82,6 @@ export default function TransportMap() {
         });
       });
 
-      // Add bus markers
       BUS_POSITIONS.forEach((bus) => {
         const el = document.createElement("div");
         el.style.cssText = `
