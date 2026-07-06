@@ -80,7 +80,7 @@ export async function GET() {
       .sort({ createdAt: -1 })
       .limit(50);
     return NextResponse.json(reports);
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch reports" },
       { status: 500 }
