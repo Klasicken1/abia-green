@@ -3,7 +3,6 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 
-// Load map only on client side — Mapbox needs the browser
 const TransportMap = dynamic(() => import("@/components/TransportMap"), {
   ssr: false,
   loading: () => (
@@ -16,6 +15,8 @@ const TransportMap = dynamic(() => import("@/components/TransportMap"), {
     </div>
   ),
 });
+
+
 
 export default function TransportPage() {
   return (
@@ -75,9 +76,9 @@ export default function TransportPage() {
         </p>
 
         {[
-          { id: "BUS-04", route: "Umuahia → Aba", eta: "7 min", occ: 68, status: "On time" },
+          { id: "BUS-04", route: "Umuahia → Aba",    eta: "7 min",  occ: 68, status: "On time" },
           { id: "BUS-11", route: "Umuahia → Ohafia", eta: "15 min", occ: 90, status: "On time" },
-          { id: "BUS-07", route: "Umuahia → Aba", eta: "32 min", occ: 24, status: "On time" },
+          { id: "BUS-07", route: "Umuahia → Aba",    eta: "32 min", occ: 24, status: "On time" },
         ].map((bus, i) => (
           <div key={i} className="flex items-center gap-3 p-3 rounded-xl mb-2"
             style={{ background: "#fff", boxShadow: "0 2px 8px rgba(26,18,8,0.05)" }}>
@@ -93,7 +94,6 @@ export default function TransportPage() {
                 {bus.id} · {bus.route}
               </p>
               <div className="flex items-center gap-2 mt-1">
-                {/* Occupancy bar */}
                 <div className="flex-1 h-1.5 rounded-full"
                   style={{ background: "rgba(26,18,8,0.08)" }}>
                   <div className="h-full rounded-full"
@@ -129,41 +129,43 @@ export default function TransportPage() {
         </p>
 
         {[
-          { name: "Umuahia → Aba",      fare: "₦800",   buses: 6, dist: "63 km" },
-          { name: "Umuahia → Ohafia",   fare: "₦1,000", buses: 4, dist: "88 km" },
-          { name: "Intra-City Aba",     fare: "₦150",   buses: 5, dist: "City"  },
-          { name: "Intra-City Umuahia", fare: "₦150",   buses: 5, dist: "City"  },
+          { name: "Umuahia → Aba",      fare: "₦800",   buses: 6, dist: "63 km", id: "umuahia-aba"    },
+          { name: "Umuahia → Ohafia",   fare: "₦1,000", buses: 4, dist: "88 km", id: "umuahia-ohafia" },
+          { name: "Intra-City Aba",     fare: "₦150",   buses: 5, dist: "City",  id: "intra-aba"      },
+          { name: "Intra-City Umuahia", fare: "₦150",   buses: 5, dist: "City",  id: "intra-umuahia"  },
         ].map((route, i) => (
-          <div key={i} className="flex items-center gap-3 p-3 rounded-xl mb-2"
-            style={{ background: "#fff", boxShadow: "0 2px 8px rgba(26,18,8,0.04)" }}>
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-base"
-              style={{ background: "#0F3D22" }}>
-              🚌
+          <Link key={i} href={`/transport/routes/${route.id}`}>
+            <div className="flex items-center gap-3 p-3 rounded-xl mb-2"
+              style={{ background: "#fff", boxShadow: "0 2px 8px rgba(26,18,8,0.04)" }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-base"
+                style={{ background: "#0F3D22" }}>
+                🚌
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-semibold" style={{ color: "#1A1208" }}>
+                  {route.name}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "#8B7355" }}>
+                  {route.buses} buses · {route.dist}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-bold" style={{
+                  fontFamily: "Space Mono, monospace",
+                  fontSize: "13px", color: "#E8941A"
+                }}>
+                  {route.fare}
+                </p>
+                <span className="flex items-center gap-1 justify-end"
+                  style={{ fontFamily: "Space Mono, monospace",
+                    fontSize: "8px", color: "#1A6B3C" }}>
+                  <span className="w-1 h-1 rounded-full animate-pulse"
+                    style={{ background: "#1A6B3C" }} />
+                  Live
+                </span>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="text-xs font-semibold" style={{ color: "#1A1208" }}>
-                {route.name}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: "#8B7355" }}>
-                {route.buses} buses · {route.dist}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="font-bold" style={{
-                fontFamily: "Space Mono, monospace",
-                fontSize: "13px", color: "#E8941A"
-              }}>
-                {route.fare}
-              </p>
-              <span className="flex items-center gap-1 justify-end"
-                style={{ fontFamily: "Space Mono, monospace",
-                  fontSize: "8px", color: "#1A6B3C" }}>
-                <span className="w-1 h-1 rounded-full animate-pulse"
-                  style={{ background: "#1A6B3C" }} />
-                Live
-              </span>
-            </div>
-          </div>
+          </Link>
         ))}
 
         {/* Connect Card */}
