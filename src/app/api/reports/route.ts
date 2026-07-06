@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 
-// ── DB CONNECTION ─────────────────────────────────────
 const MONGODB_URI = process.env.MONGODB_URI!;
 
 let isConnected = false;
@@ -12,7 +11,6 @@ async function connectDB() {
   isConnected = true;
 }
 
-// ── REPORT SCHEMA ─────────────────────────────────────
 const ReportSchema = new mongoose.Schema({
   trackingId:  { type: String, required: true, unique: true },
   type:        { type: String, required: true },
@@ -26,12 +24,10 @@ const ReportSchema = new mongoose.Schema({
 const Report = mongoose.models.Report ||
   mongoose.model("Report", ReportSchema);
 
-// ── GENERATE TRACKING ID ──────────────────────────────
 function generateId(): string {
   return "AG-" + Math.floor(100000 + Math.random() * 900000);
 }
 
-// ── POST /api/reports ─────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
@@ -64,7 +60,6 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
 
   } catch {
-    console.error("Report error:", err);
     return NextResponse.json(
       { error: "Failed to submit report" },
       { status: 500 }
@@ -72,7 +67,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ── GET /api/reports ──────────────────────────────────
 export async function GET() {
   try {
     await connectDB();
