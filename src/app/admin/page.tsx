@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 
@@ -39,14 +40,15 @@ const SEVERITY_COLORS: Record<string, string> = {
 };
 
 export default function AdminPage() {
+  const { data: session, status } = useSession();
   const [reports, setReports]   = useState<Report[]>([]);
   const [loading, setLoading]   = useState(true);
   const [filter, setFilter]     = useState("all");
   const [updating, setUpdating] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchReports();
-  }, []);
+    if (session) fetchReports();
+  }, [session]);
 
   async function fetchReports() {
     setLoading(true);
@@ -60,19 +62,59 @@ export default function AdminPage() {
     setLoading(false);
   }
 
-  async function updateStatus(id: string, status: string) {
+  async function updateStatus(id: string, newStatus: string) {
     setUpdating(id);
     try {
       await fetch(`/api/reports/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status: newStatus }),
       });
       await fetchReports();
     } catch {
       // silent
     }
     setUpdating(null);
+  }
+
+  // Loading state
+  if (status === "loading") {
+    return (
+      <main className="flex flex-col min-h-screen items-center justify-center"
+        style={{ background: "#F7F3EC" }}>
+        <div className="text-3xl mb-3">⏳</div>
+        <p className="text-sm" style={{ color: "#8B7355" }}>Loading...</p>
+      </main>
+    );
+  }
+
+  // Not signed in
+  if (!session) {
+    return (
+      <main className="flex flex-col min-h-screen items-center justify-center px-4"
+        style={{ background: "#F7F3EC" }}>
+        <div className="text-center max-w-xs">
+          <div className="text-4xl mb-4">🔒</div>
+          <h1 className="text-2xl mb-2"
+            style={{ fontFamily: "DM Serif Display, serif", color: "#1A1208" }}>
+            Admin Access Required
+          </h1>
+          <p className="text-sm mb-6" style={{ color: "#8B7355" }}>
+            Sign in to access the report dashboard.
+          </p>
+          <Link href="/auth/signin">
+            <button className="w-full px-6 py-3.5 rounded-xl text-sm font-bold"
+              style={{ background: "#1A6B3C", color: "#fff" }}>
+              Sign In
+            </button>
+          </Link>
+          <Link href="/" className="block mt-3 text-xs text-center"
+            style={{ color: "#8B7355" }}>
+            ← Back to Home
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   const filtered = filter === "all"
@@ -106,21 +148,25 @@ export default function AdminPage() {
         <p className="text-xs mt-1" style={{ color: "rgba(253,250,245,0.45)" }}>
           {reports.length} total reports · Live from MongoDB
         </p>
+        <p className="text-xs mt-0.5" style={{ color: "rgba(253,250,245,0.35)",
+          fontFamily: "Space Mono, monospace" }}>
+          Signed in as {session.user?.email}
+        </p>
       </div>
 
       {/* Stats strip */}
       <div className="grid grid-cols-4 gap-0"
         style={{ background: "#0F3D22", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
         {[
-          { label: "Total",       count: counts.all,         color: "#fff"     },
-          { label: "Pending",     count: counts.pending,     color: "#E8941A"  },
-          { label: "In Progress", count: counts.in_progress, color: "#8E44AD"  },
-          { label: "Resolved",    count: counts.resolved,    color: "#1A6B3C"  },
+          { label: "Total",       count: counts.all,         color: "#fff"    },
+          { label: "Pending",     count: counts.pending,     color: "#E8941A" },
+          { label: "In Progress", count: counts.in_progress, color: "#8E44AD" },
+          { label: "Resolved",    count: counts.resolved,    color: "#1A6B3C" },
         ].map((s, i) => (
           <div key={i} className="py-3 text-center"
             style={{ borderRight: i < 3 ? "1px solid rgba(255,255,255,0.08)" : "none" }}>
-            <p className="text-xl font-bold" style={{
-              fontFamily: "DM Serif Display, serif", color: s.color }}>
+            <p className="text-xl font-bold"
+              style={{ fontFamily: "DM Serif Display, serif", color: s.color }}>
               {s.count}
             </p>
             <p style={{ fontFamily: "Space Mono, monospace", fontSize: "8px",
@@ -137,11 +183,11 @@ export default function AdminPage() {
         {/* Filter chips */}
         <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
           {[
-            { key: "all",         label: "All" },
-            { key: "pending",     label: "Pending" },
-            { key: "assigned",    label: "Assigned" },
+            { key: "all",         label: "All"         },
+            { key: "pending",     label: "Pending"     },
+            { key: "assigned",    label: "Assigned"    },
             { key: "in_progress", label: "In Progress" },
-            { key: "resolved",    label: "Resolved" },
+            { key: "resolved",    label: "Resolved"    },
           ].map(f => (
             <button key={f.key} onClick={() => setFilter(f.key)}
               className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
@@ -156,7 +202,7 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {/* Refresh button */}
+        {/* Refresh */}
         <button onClick={fetchReports}
           className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-xl text-xs"
           style={{ background: "rgba(26,107,60,0.08)", color: "#1A6B3C",
@@ -185,7 +231,6 @@ export default function AdminPage() {
             <div key={report._id} className="rounded-xl overflow-hidden mb-3"
               style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.06)" }}>
 
-              {/* Report header */}
               <div className="px-4 py-3 flex items-center justify-between"
                 style={{ borderBottom: "1px solid rgba(26,18,8,0.06)" }}>
                 <div className="flex items-center gap-2">
@@ -213,20 +258,15 @@ export default function AdminPage() {
                 </span>
               </div>
 
-              {/* Report body */}
               <div className="px-4 py-3">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <p className="text-sm font-semibold" style={{ color: "#1A1208" }}>
-                      {TYPE_LABELS[report.type] || report.type}
-                    </p>
-                    <p className="text-xs mt-0.5" style={{ color: "#8B7355" }}>
-                      {report.lga} · {new Date(report.createdAt).toLocaleDateString("en-NG", {
-                        day: "numeric", month: "short", year: "numeric"
-                      })}
-                    </p>
-                  </div>
-                </div>
+                <p className="text-sm font-semibold" style={{ color: "#1A1208" }}>
+                  {TYPE_LABELS[report.type] || report.type}
+                </p>
+                <p className="text-xs mt-0.5 mb-2" style={{ color: "#8B7355" }}>
+                  {report.lga} · {new Date(report.createdAt).toLocaleDateString("en-NG", {
+                    day: "numeric", month: "short", year: "numeric"
+                  })}
+                </p>
 
                 {report.description && (
                   <p className="text-xs mb-3 line-clamp-2"
@@ -235,7 +275,6 @@ export default function AdminPage() {
                   </p>
                 )}
 
-                {/* Status updater */}
                 <div className="flex gap-2 flex-wrap">
                   {["pending","assigned","in_progress","resolved"].map(s => (
                     <button key={s}
@@ -245,8 +284,7 @@ export default function AdminPage() {
                       style={{
                         background: report.status === s
                           ? `${STATUS_COLORS[s]}20` : "rgba(26,18,8,0.04)",
-                        color: report.status === s
-                          ? STATUS_COLORS[s] : "#8B7355",
+                        color: report.status === s ? STATUS_COLORS[s] : "#8B7355",
                         border: report.status === s
                           ? `1px solid ${STATUS_COLORS[s]}40` : "1px solid rgba(26,18,8,0.08)",
                         fontFamily: "Space Mono, monospace", fontSize: "8px",
