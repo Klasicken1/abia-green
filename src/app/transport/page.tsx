@@ -1,4 +1,5 @@
 "use client";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
@@ -16,9 +17,38 @@ const TransportMap = dynamic(() => import("@/components/TransportMap"), {
   ),
 });
 
+interface Alert {
+  id: string;
+  route: string;
+  message: string;
+  severity: "info" | "warning" | "critical";
+  createdAt: string;
+}
 
+const SEVERITY_BG: Record<string, string> = {
+  info:     "rgba(36,113,163,0.12)",
+  warning:  "rgba(232,148,26,0.12)",
+  critical: "rgba(192,57,43,0.12)",
+};
+const SEVERITY_COLOR: Record<string, string> = {
+  info:     "#2471A3",
+  warning:  "#E8941A",
+  critical: "#C0392B",
+};
+const SEVERITY_ICON: Record<string, string> = {
+  info: "ℹ️", warning: "⚠️", critical: "🚨",
+};
 
 export default function TransportPage() {
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+
+  useEffect(() => {
+    fetch("/api/alerts")
+      .then(r => r.json())
+      .then(data => setAlerts(Array.isArray(data) ? data : []))
+      .catch(() => setAlerts([]));
+  }, []);
+
   return (
     <main className="flex flex-col min-h-screen" style={{ background: "#F7F3EC" }}>
 
@@ -56,6 +86,27 @@ export default function TransportPage() {
           ))}
         </div>
       </div>
+
+      {/* Service Disruption Alerts */}
+      {alerts.length > 0 && (
+        <div className="px-4 pt-3">
+          {alerts.map(alert => (
+            <div key={alert.id} className="flex items-start gap-3 p-3 rounded-xl mb-2"
+              style={{ background: SEVERITY_BG[alert.severity],
+                border: `1px solid ${SEVERITY_COLOR[alert.severity]}30` }}>
+              <span className="text-base flex-shrink-0">{SEVERITY_ICON[alert.severity]}</span>
+              <div className="flex-1">
+                <p className="text-xs font-semibold" style={{ color: SEVERITY_COLOR[alert.severity] }}>
+                  {alert.route}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "#1A1208" }}>
+                  {alert.message}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Live Map */}
       <div className="mx-4 mt-4 rounded-xl overflow-hidden"
@@ -169,18 +220,18 @@ export default function TransportPage() {
         ))}
 
         {/* Fare Calculator CTA */}
-<Link href="/transport/fare">
-  <div className="flex items-center gap-3 p-4 rounded-xl mb-3"
-    style={{ background: "rgba(26,107,60,0.08)", border: "1px solid rgba(26,107,60,0.2)" }}>
-    <span className="text-2xl">🧮</span>
-    <div className="flex-1">
-      <p className="text-sm font-semibold" style={{ color: "#1A1208" }}>Fare Calculator</p>
-      <p className="text-xs" style={{ color: "#8B7355" }}>Check your fare before you travel</p>
-    </div>
-    <span style={{ color: "#1A6B3C", fontSize: "16px" }}>→</span>
-  </div>
-</Link>
-        
+        <Link href="/transport/fare">
+          <div className="flex items-center gap-3 p-4 rounded-xl mb-3"
+            style={{ background: "rgba(26,107,60,0.08)", border: "1px solid rgba(26,107,60,0.2)" }}>
+            <span className="text-2xl">🧮</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold" style={{ color: "#1A1208" }}>Fare Calculator</p>
+              <p className="text-xs" style={{ color: "#8B7355" }}>Check your fare before you travel</p>
+            </div>
+            <span style={{ color: "#1A6B3C", fontSize: "16px" }}>→</span>
+          </div>
+        </Link>
+
         {/* Connect Card */}
         <div className="rounded-xl p-4 mt-2" style={{ background: "#0F3D22" }}>
           <p className="text-xs mb-1" style={{
@@ -201,10 +252,12 @@ export default function TransportPage() {
                 •••• 4821 · Active
               </p>
             </div>
-            <button className="px-4 py-2 rounded-lg text-xs font-bold"
-              style={{ background: "#E8941A", color: "#fff" }}>
-              Top Up
-            </button>
+            <Link href="/transport/topup">
+              <button className="px-4 py-2 rounded-lg text-xs font-bold"
+                style={{ background: "#E8941A", color: "#fff" }}>
+                Top Up
+              </button>
+            </Link>
           </div>
         </div>
       </div>
