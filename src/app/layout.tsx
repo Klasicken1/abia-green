@@ -1,3 +1,5 @@
+
+import { Providers } from "./providers";
 import type { Metadata, Viewport } from "next";
 import { DM_Serif_Display, Inter, Space_Mono } from "next/font/google";
 import "./globals.css";
@@ -57,10 +59,12 @@ export default function RootLayout({
       className={`${dmSerif.variable} ${inter.variable} ${spaceMono.variable}`}
     >
       <body className="bg-cream font-sans antialiased">
-        <div className="max-w-md mx-auto min-h-screen relative bg-cream">
-          {children}
-        </div>
-      </body>
+  <Providers>
+    <div className="max-w-md mx-auto min-h-screen relative bg-cream">
+      {children}
+    </div>
+  </Providers>
+</body>
     </html>
   );
 }
