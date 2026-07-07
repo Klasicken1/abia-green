@@ -46,3 +46,34 @@ export async function GET(
     );
   }
 }
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await connectDB();
+    const body = await req.json();
+    const { status } = body;
+
+    const report = await Report.findByIdAndUpdate(
+      params.id,
+      { status },
+      { new: true }
+    );
+
+    if (!report) {
+      return NextResponse.json(
+        { error: "Report not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(report);
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to update report" },
+      { status: 500 }
+    );
+  }
+}
