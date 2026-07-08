@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { auth } from "@/app/api/auth/[...nextauth]/route";
-import { Journey } from "@/lib/models/Journey";
+import { auth } from "@/lib/auth";import { Journey } from "@/lib/models/Journey";
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 let isConnected = false;
