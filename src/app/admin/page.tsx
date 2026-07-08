@@ -47,9 +47,11 @@ export default function AdminPage() {
   const [filter, setFilter]     = useState("all");
   const [updating, setUpdating] = useState<string | null>(null);
 
+  const role = session?.user?.role;
+
   useEffect(() => {
-    if (session) fetchReports();
-  }, [session]);
+    if (session && role === "admin") fetchReports();
+  }, [session, role]);
 
   async function fetchReports() {
     setLoading(true);
@@ -112,6 +114,31 @@ export default function AdminPage() {
           <Link href="/" className="block mt-3 text-xs text-center"
             style={{ color: "#8B7355" }}>
             ← Back to Home
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  // Signed in but wrong role
+  if (role !== "admin") {
+    return (
+      <main className="flex flex-col min-h-screen items-center justify-center px-4"
+        style={{ background: "#F7F3EC" }}>
+        <div className="text-center max-w-xs">
+          <div className="text-4xl mb-4">🚫</div>
+          <h1 className="text-2xl mb-2"
+            style={{ fontFamily: "DM Serif Display, serif", color: "#1A1208" }}>
+            Restricted
+          </h1>
+          <p className="text-sm mb-6" style={{ color: "#8B7355" }}>
+            This page is only available to admin accounts.
+          </p>
+          <Link href="/">
+            <button className="w-full px-6 py-3.5 rounded-xl text-sm font-bold"
+              style={{ background: "#1A6B3C", color: "#fff" }}>
+              Back to Home
+            </button>
           </Link>
         </div>
       </main>

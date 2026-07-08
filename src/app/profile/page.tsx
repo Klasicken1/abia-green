@@ -1,11 +1,20 @@
 "use client";
+import { useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import Link from "next/link";
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const loading = status === "loading";
+
+  useEffect(() => {
+    if (session && !session.user?.role) {
+      router.push("/select-role");
+    }
+  }, [session, router]);
 
   if (loading) {
     return (
@@ -50,7 +59,7 @@ export default function ProfilePage() {
               <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs"
                 style={{ background: "rgba(26,107,60,0.3)", color: "#90EE90",
                   fontFamily: "Space Mono, monospace", fontSize: "9px" }}>
-                ● Signed in
+                ● Signed in {session.user?.role ? `· ${session.user.role}` : ""}
               </span>
             )}
           </div>

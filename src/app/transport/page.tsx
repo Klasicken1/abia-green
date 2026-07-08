@@ -25,6 +25,18 @@ interface Alert {
   createdAt: string;
 }
 
+interface LiveBus {
+  _id: string;
+  busId: string;
+  route: string;
+  routeLabel: string;
+  status: "idle" | "on_route";
+  progress: number;
+  occupancy: number;
+  etaMinutes: number | null;
+  updatedAt: string;
+}
+
 const SEVERITY_BG: Record<string, string> = {
   info:     "rgba(36,113,163,0.12)",
   warning:  "rgba(232,148,26,0.12)",
@@ -41,13 +53,25 @@ const SEVERITY_ICON: Record<string, string> = {
 
 export default function TransportPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [liveBuses, setLiveBuses] = useState<LiveBus[]>([]);
 
   useEffect(() => {
     fetch("/api/alerts")
       .then(r => r.json())
       .then(data => setAlerts(Array.isArray(data) ? data : []))
       .catch(() => setAlerts([]));
+
+    fetchBuses();
+    const interval = setInterval(fetchBuses, 10000); // poll every 10s
+    return () => clearInterval(interval);
   }, []);
+
+  function fetchBuses() {
+    fetch("/api/buses")
+      .then(r => r.json())
+      .then(data => setLiveBuses(Array.isArray(data) ? data : []))
+      .catch(() => setLiveBuses([]));
+  }
 
   return (
     <main className="flex flex-col min-h-screen" style={{ background: "#F7F3EC" }}>
@@ -126,49 +150,56 @@ export default function TransportPage() {
           Live Buses
         </p>
 
-        {[
-          { id: "BUS-04", route: "Umuahia → Aba",    eta: "7 min",  occ: 68, status: "On time" },
-          { id: "BUS-11", route: "Umuahia → Ohafia", eta: "15 min", occ: 90, status: "On time" },
-          { id: "BUS-07", route: "Umuahia → Aba",    eta: "32 min", occ: 24, status: "On time" },
-        ].map((bus, i) => (
-          <div key={i} className="flex items-center gap-3 p-3 rounded-xl mb-2"
+        {liveBuses.length === 0 ? (
+          <div className="rounded-xl p-4 mb-2 text-center"
             style={{ background: "#fff", boxShadow: "0 2px 8px rgba(26,18,8,0.05)" }}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "#0F3D22" }}>
-              <span style={{ fontFamily: "Space Mono, monospace", fontSize: "10px",
-                color: "#E8941A", fontWeight: 700 }}>
-                {bus.id.split("-")[1]}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold" style={{ color: "#1A1208" }}>
-                {bus.id} · {bus.route}
-              </p>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="flex-1 h-1.5 rounded-full"
-                  style={{ background: "rgba(26,18,8,0.08)" }}>
-                  <div className="h-full rounded-full"
-                    style={{
-                      width: `${bus.occ}%`,
-                      background: bus.occ > 80 ? "#E8941A" : "#1A6B3C"
-                    }} />
-                </div>
-                <span className="text-xs flex-shrink-0" style={{ color: "#8B7355" }}>
-                  {bus.occ}%
+            <p className="text-xs" style={{ color: "#8B7355" }}>
+              No buses currently on route. Check back soon.
+            </p>
+          </div>
+        ) : (
+          liveBuses.map(bus => (
+            <div key={bus._id} className="flex items-center gap-3 p-3 rounded-xl mb-2"
+              style={{ background: "#fff", boxShadow: "0 2px 8px rgba(26,18,8,0.05)" }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "#0F3D22" }}>
+                <span style={{ fontFamily: "Space Mono, monospace", fontSize: "10px",
+                  color: "#E8941A", fontWeight: 700 }}>
+                  {bus.busId.split("-")[1] || bus.busId}
                 </span>
               </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold" style={{ color: "#1A1208" }}>
+                  {bus.busId} · {bus.routeLabel}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex-1 h-1.5 rounded-full"
+                    style={{ background: "rgba(26,18,8,0.08)" }}>
+                    <div className="h-full rounded-full"
+                      style={{
+                        width: `${bus.progress}%`,
+                        background: bus.progress > 80 ? "#E8941A" : "#1A6B3C"
+                      }} />
+                  </div>
+                  <span className="text-xs flex-shrink-0" style={{ color: "#8B7355" }}>
+                    {bus.progress}%
+                  </span>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-sm font-bold" style={{
+                  fontFamily: "DM Serif Display, serif",
+                  color: (bus.etaMinutes ?? 0) < 10 ? "#E8941A" : "#1A6B3C"
+                }}>
+                  {bus.etaMinutes ?? "—"} min
+                </p>
+                <p className="text-xs" style={{ color: "#8B7355" }}>
+                  {bus.occupancy} onboard
+                </p>
+              </div>
             </div>
-            <div className="text-right flex-shrink-0">
-              <p className="text-sm font-bold" style={{
-                fontFamily: "DM Serif Display, serif",
-                color: bus.occ > 80 ? "#E8941A" : "#1A6B3C"
-              }}>
-                {bus.eta}
-              </p>
-              <p className="text-xs" style={{ color: "#8B7355" }}>{bus.status}</p>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
 
         {/* Routes */}
         <p className="flex items-center gap-2 mb-3 mt-4" style={{
