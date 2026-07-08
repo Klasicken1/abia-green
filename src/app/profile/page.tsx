@@ -29,9 +29,9 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4">
           {session?.user?.image ? (
             <img src={session.user.image ?? ""} alt="Profile"
-  className="w-14 h-14 rounded-full border-2"
-  referrerPolicy="no-referrer"
-  style={{ borderColor: "rgba(255,255,255,0.2)" }} />
+              className="w-14 h-14 rounded-full border-2"
+              referrerPolicy="no-referrer"
+              style={{ borderColor: "rgba(255,255,255,0.2)" }} />
           ) : (
             <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl"
               style={{ background: "rgba(255,255,255,0.15)" }}>
@@ -139,4 +139,33 @@ export default function ProfilePage() {
             <button onClick={() => signIn("google", { callbackUrl: "/profile" })}
               className="w-full py-4 rounded-xl text-sm font-bold flex items-center justify-center gap-3 mb-3"
               style={{ background: "#fff", border: "1.5px solid rgba(26,18,8,0.12)",
-                color: "#1A1208", boxShadow: "0 2px 12px rgba(26,18,8,0.06)" }}></button>
+                color: "#1A1208", boxShadow: "0 2px 12px rgba(26,18,8,0.06)" }}>
+              <svg width="18" height="18" viewBox="0 0 18 18">
+                <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/>
+                <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.01c-.72.48-1.63.77-2.7.77-2.08 0-3.84-1.4-4.47-3.29H1.85v2.07A8 8 0 0 0 8.98 17z"/>
+                <path fill="#FBBC05" d="M4.51 10.53c-.16-.48-.25-.99-.25-1.53s.09-1.05.25-1.53V5.4H1.85A8 8 0 0 0 .98 9c0 1.29.31 2.51.87 3.6l2.66-2.07z"/>
+                <path fill="#EA4335" d="M8.98 3.58c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 .87 5.4L3.53 7.47c.63-1.89 2.39-3.89 5.45-3.89z"/>
+              </svg>
+              Continue with Google
+            </button>
+
+            <Link href="/auth/signin">
+              <button className="w-full py-3.5 rounded-xl text-sm font-bold"
+                style={{ background: "#1A6B3C", color: "#fff" }}>
+                Sign In with Email
+              </button>
+            </Link>
+          </>
+        )}
+
+        <p className="text-center mt-4 text-xs" style={{
+          fontFamily: "Space Mono, monospace", color: "#8B7355",
+          fontSize: "8px", letterSpacing: "0.08em" }}>
+          MORNING STACK ICT CLUB · IBEKU HIGH SCHOOL
+        </p>
+      </div>
+
+      <BottomNav />
+    </main>
+  );
+}
