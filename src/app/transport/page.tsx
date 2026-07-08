@@ -232,6 +232,19 @@ export default function TransportPage() {
           </div>
         </Link>
 
+        {/* Journey History CTA */}
+        <Link href="/journeys">
+          <div className="flex items-center gap-3 p-4 rounded-xl mb-3"
+            style={{ background: "rgba(26,107,60,0.08)", border: "1px solid rgba(26,107,60,0.2)" }}>
+            <span className="text-2xl">🧭</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold" style={{ color: "#1A1208" }}>Journey History</p>
+              <p className="text-xs" style={{ color: "#8B7355" }}>See your past trips and spending</p>
+            </div>
+            <span style={{ color: "#1A6B3C", fontSize: "16px" }}>→</span>
+          </div>
+        </Link>
+
         {/* Connect Card */}
         <div className="rounded-xl p-4 mt-2" style={{ background: "#0F3D22" }}>
           <p className="text-xs mb-1" style={{

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 
@@ -39,26 +40,38 @@ const FARES: Record<string, Record<string, { fare: number; duration: string; rou
 };
 
 export default function FareCalculatorPage() {
+  const { data: session } = useSession();
   const [from, setFrom]     = useState("");
   const [to, setTo]         = useState("");
   const [result, setResult] = useState<{ fare: number; duration: string; route: string } | null>(null);
   const [notFound, setNotFound] = useState(false);
 
+  // --- Payment / journey logging state ---
+  const [paying, setPaying]         = useState(false);
+  const [paySuccess, setPaySuccess] = useState(false);
+  const [payError, setPayError]     = useState<string | null>(null);
+
   function handleFrom(val: string) {
     setFrom(val);
     setResult(null);
     setNotFound(false);
+    setPaySuccess(false);
+    setPayError(null);
   }
 
   function handleTo(val: string) {
     setTo(val);
     setResult(null);
     setNotFound(false);
+    setPaySuccess(false);
+    setPayError(null);
   }
 
   function calculate() {
     setResult(null);
     setNotFound(false);
+    setPaySuccess(false);
+    setPayError(null);
     if (!from || !to || from === to) { setNotFound(true); return; }
     const fare = FARES[from]?.[to] || FARES[to]?.[from];
     if (fare) { setResult(fare); } else { setNotFound(true); }
@@ -70,6 +83,43 @@ export default function FareCalculatorPage() {
     setTo(tmp);
     setResult(null);
     setNotFound(false);
+    setPaySuccess(false);
+    setPayError(null);
+  }
+
+  async function handlePay() {
+    if (!result) return;
+
+    if (!session) {
+      setPayError("Sign in to save this journey to your history.");
+      return;
+    }
+
+    setPaying(true);
+    setPayError(null);
+    try {
+      const res = await fetch("/api/journeys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          route: result.route,
+          from,
+          to,
+          fare: result.fare,
+          source: "fare_payment",
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Payment failed");
+      }
+
+      setPaySuccess(true);
+    } catch (err) {
+      setPayError(err instanceof Error ? err.message : "Payment failed");
+    }
+    setPaying(false);
   }
 
   const canCalculate = from !== "" && to !== "" && from !== to;
@@ -193,18 +243,45 @@ export default function FareCalculatorPage() {
                 </div>
               ))}
             </div>
-            <div className="px-4 pb-4 flex gap-2">
-              <Link href={`/transport/routes/${result.route}`} className="flex-1">
-                <button className="w-full py-3 rounded-xl text-xs font-bold"
-                  style={{ background: "#1A6B3C", color: "#fff" }}>
-                  View Route →
-                </button>
-              </Link>
-              <button className="flex-1 py-3 rounded-xl text-xs font-bold"
-                style={{ background: "#0F3D22", color: "#fff" }}>
-                Pay ₦{result.fare.toLocaleString()}
-              </button>
-            </div>
+
+            {paySuccess ? (
+              <div className="px-4 pb-4">
+                <div className="w-full py-3 rounded-xl text-xs font-bold text-center mb-2"
+                  style={{ background: "rgba(26,107,60,0.1)", color: "#1A6B3C",
+                    border: "1px solid rgba(26,107,60,0.25)" }}>
+                  ✓ Journey logged to your history
+                </div>
+                <Link href="/journeys">
+                  <button className="w-full py-3 rounded-xl text-xs font-bold"
+                    style={{ background: "#0F3D22", color: "#fff" }}>
+                    View Journey History →
+                  </button>
+                </Link>
+              </div>
+            ) : (
+              <div className="px-4 pb-4">
+                {payError && (
+                  <p className="text-xs mb-2" style={{ color: "#C0392B" }}>
+                    {payError}
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <Link href={`/transport/routes/${result.route}`} className="flex-1">
+                    <button className="w-full py-3 rounded-xl text-xs font-bold"
+                      style={{ background: "#1A6B3C", color: "#fff" }}>
+                      View Route →
+                    </button>
+                  </Link>
+                  <button
+                    onClick={handlePay}
+                    disabled={paying}
+                    className="flex-1 py-3 rounded-xl text-xs font-bold"
+                    style={{ background: paying ? "rgba(15,61,34,0.5)" : "#0F3D22", color: "#fff" }}>
+                    {paying ? "Processing..." : `Pay ₦${result.fare.toLocaleString()}`}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

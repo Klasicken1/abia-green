@@ -119,6 +119,10 @@ export default async function TrackPage({
               {report.status.replace("_", " ")}
             </p>
           </div>
+          {report.photoUrl && (
+            <img src={report.photoUrl} alt="Report photo"
+              className="w-full h-48 object-cover" />
+          )}
           <div className="p-4">
             {[
               { label: "Type",      value: typeLabels[report.type] || report.type },

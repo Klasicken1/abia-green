@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import BottomNav from "@/components/BottomNav";
 import Link from "next/link";
 
@@ -25,14 +25,89 @@ export default function EnvironmentPage() {
   const [trackingId, setTrackingId]     = useState("");
   const [loading, setLoading]           = useState(false);
 
+  // --- Photo upload state ---
+  const [photoFile, setPhotoFile]       = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl]         = useState<string | null>(null);
+  const [uploading, setUploading]       = useState(false);
+  const [uploadError, setUploadError]   = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadError(null);
+    setPhotoFile(file);
+    setPhotoUrl(null);
+    setPhotoPreview(URL.createObjectURL(file));
+  }
+
+  function removePhoto() {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setPhotoUrl(null);
+    setUploadError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function uploadPhotoIfNeeded(): Promise<string | null> {
+    if (!photoFile) return null;
+    if (photoUrl) return photoUrl; // already uploaded
+
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", photoFile);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Upload failed");
+      }
+
+      const data = await res.json();
+      setPhotoUrl(data.url);
+      setUploading(false);
+      return data.url;
+    } catch (err) {
+      setUploading(false);
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+      return null;
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+
     try {
+      // Upload photo first if one is attached and not yet uploaded
+      let finalPhotoUrl = photoUrl;
+      if (photoFile && !photoUrl) {
+        finalPhotoUrl = await uploadPhotoIfNeeded();
+        if (!finalPhotoUrl) {
+          // Upload failed — stop here, let the user see the error and retry/remove
+          setLoading(false);
+          return;
+        }
+      }
+
       const res = await fetch("/api/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: selectedType, lga, severity, description }),
+        body: JSON.stringify({
+          type: selectedType,
+          lga,
+          severity,
+          description,
+          photoUrl: finalPhotoUrl || null,
+        }),
       });
       const data = await res.json();
       if (data.trackingId) {
@@ -54,6 +129,7 @@ export default function EnvironmentPage() {
     setLga("");
     setDescription("");
     setTrackingId("");
+    removePhoto();
   }
 
   if (submitted) {
@@ -86,6 +162,10 @@ export default function EnvironmentPage() {
                 {trackingId}
               </p>
             </div>
+            {photoUrl && (
+              <img src={photoUrl} alt="Report photo"
+                className="w-full h-48 object-cover" />
+            )}
             <div className="p-4">
               {[
                 { label: "Type",      value: REPORT_TYPES.find(t => t.value === selectedType)?.name || "" },
@@ -256,22 +336,67 @@ export default function EnvironmentPage() {
               color: "#1A1208", fontFamily: "Inter, sans-serif",
               outline: "none", resize: "none", lineHeight: "1.6" }} />
 
-          <div className="rounded-xl p-4 mb-6 text-center"
-            style={{ border: "2px dashed rgba(26,18,8,0.15)", background: "#fff" }}>
-            <div className="text-2xl mb-1">📷</div>
-            <p className="text-xs font-semibold" style={{ color: "#1A6B3C" }}>
-              Tap to attach a photo
-            </p>
-            <p style={{ fontFamily: "Space Mono, monospace", fontSize: "9px",
-              color: "#8B7355", marginTop: "4px" }}>
-              Coming soon
-            </p>
-          </div>
+          <p className="flex items-center gap-2 mb-2" style={{
+            fontFamily: "Space Mono, monospace", fontSize: "9px",
+            letterSpacing: "0.14em", textTransform: "uppercase", color: "#C27A10" }}>
+            <span className="inline-block w-3.5 h-0.5" style={{ background: "#C27A10" }} />
+            Photo
+          </p>
 
-          <button type="submit" disabled={loading}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handlePhotoSelect}
+            className="hidden"
+          />
+
+          {!photoPreview ? (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full rounded-xl p-4 mb-6 text-center"
+              style={{ border: "2px dashed rgba(26,18,8,0.15)", background: "#fff" }}
+            >
+              <div className="text-2xl mb-1">📷</div>
+              <p className="text-xs font-semibold" style={{ color: "#1A6B3C" }}>
+                Tap to attach a photo
+              </p>
+              <p style={{ fontFamily: "Space Mono, monospace", fontSize: "9px",
+                color: "#8B7355", marginTop: "4px" }}>
+                JPG, PNG, or WEBP · Max 8MB
+              </p>
+            </button>
+          ) : (
+            <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid rgba(26,18,8,0.1)" }}>
+              <img src={photoPreview} alt="Selected photo" className="w-full h-48 object-cover" />
+              <div className="flex items-center justify-between p-2" style={{ background: "#fff" }}>
+                <span className="text-xs" style={{ color: "#8B7355" }}>
+                  {uploading ? "Uploading…" : photoUrl ? "Uploaded ✓" : "Ready to upload"}
+                </span>
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  className="text-xs font-semibold"
+                  style={{ color: "#C0392B" }}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          )}
+
+          {uploadError && (
+            <p className="text-xs mb-4" style={{ color: "#C0392B" }}>
+              {uploadError}
+            </p>
+          )}
+          {!uploadError && <div className="mb-4" />}
+
+          <button type="submit" disabled={loading || uploading}
             className="w-full py-4 rounded-xl text-sm font-bold"
-            style={{ background: loading ? "rgba(26,107,60,0.5)" : "#1A6B3C", color: "#fff" }}>
-            {loading ? "Submitting..." : "Submit Report to AEIS →"}
+            style={{ background: (loading || uploading) ? "rgba(26,107,60,0.5)" : "#1A6B3C", color: "#fff" }}>
+            {uploading ? "Uploading photo..." : loading ? "Submitting..." : "Submit Report to AEIS →"}
           </button>
         </form>
 

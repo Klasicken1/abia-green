@@ -17,6 +17,7 @@ const ReportSchema = new mongoose.Schema({
   lga:         { type: String, required: true },
   severity:    { type: String, required: true },
   description: { type: String },
+  photoUrl:    { type: String, default: null },
   status:      { type: String, default: "pending" },
   createdAt:   { type: Date, default: Date.now },
 });
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const body = await req.json();
-    const { type, lga, severity, description } = body;
+    const { type, lga, severity, description, photoUrl } = body;
 
     if (!type || !lga || !severity) {
       return NextResponse.json(
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
       lga,
       severity,
       description: description || "",
+      photoUrl: photoUrl || null,
       status: "pending",
     });
 
@@ -59,7 +61,8 @@ export async function POST(req: NextRequest) {
       message: "Report submitted successfully",
     }, { status: 201 });
 
-  } catch {
+  } catch (err) {
+    console.error("POST /api/reports failed:", err);
     return NextResponse.json(
       { error: "Failed to submit report" },
       { status: 500 }
@@ -74,7 +77,8 @@ export async function GET() {
       .sort({ createdAt: -1 })
       .limit(50);
     return NextResponse.json(reports);
-  } catch {
+  } catch (err) {
+    console.error("GET /api/reports failed:", err);
     return NextResponse.json(
       { error: "Failed to fetch reports" },
       { status: 500 }

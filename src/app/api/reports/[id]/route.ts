@@ -16,6 +16,7 @@ const ReportSchema = new mongoose.Schema({
   lga:         { type: String, required: true },
   severity:    { type: String, required: true },
   description: { type: String },
+  photoUrl:    { type: String, default: null },
   status:      { type: String, default: "pending" },
   createdAt:   { type: Date, default: Date.now },
 });

@@ -24,3 +24,4 @@ const nextAuth = NextAuth({
 
 export const GET = nextAuth.handlers.GET;
 export const POST = nextAuth.handlers.POST;
+export const auth = nextAuth.auth;

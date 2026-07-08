@@ -12,6 +12,7 @@ interface Report {
   severity: string;
   description: string;
   status: string;
+  photoUrl?: string | null;
   createdAt: string;
 }
 
@@ -257,6 +258,11 @@ export default function AdminPage() {
                   {report.status.replace("_", " ")}
                 </span>
               </div>
+
+              {report.photoUrl && (
+                <img src={report.photoUrl} alt={`Photo for ${report.trackingId}`}
+                  className="w-full h-40 object-cover" />
+              )}
 
               <div className="px-4 py-3">
                 <p className="text-sm font-semibold" style={{ color: "#1A1208" }}>
