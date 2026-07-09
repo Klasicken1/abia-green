@@ -1,29 +1,60 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 
 const AMOUNTS = [500, 1000, 2000, 5000];
 
 export default function TopUpPage() {
-  const [amount, setAmount]       = useState("");
-  const [custom, setCustom]       = useState("");
-  const [loading, setLoading]     = useState(false);
-  const [success, setSuccess]     = useState(false);
-  const [reference, setReference] = useState("");
+  const [currentBalance, setCurrentBalance] = useState<number | null>(null);
+  const [amount, setAmount]         = useState("");
+  const [custom, setCustom]         = useState("");
+  const [loading, setLoading]       = useState(false);
+  const [success, setSuccess]       = useState(false);
+  const [reference, setReference]   = useState("");
+  const [newBalance, setNewBalance] = useState<number | null>(null);
+  const [error, setError]           = useState<string | null>(null);
 
   const finalAmount = amount || custom;
+
+  useEffect(() => {
+    fetchBalance();
+  }, []);
+
+  async function fetchBalance() {
+    try {
+      const res = await fetch("/api/user/balance");
+      const data = await res.json();
+      setCurrentBalance(data.balance ?? 0);
+    } catch {
+      setCurrentBalance(0);
+    }
+  }
 
   async function handlePaystack() {
     if (!finalAmount || parseInt(finalAmount) < 50) return;
     setLoading(true);
+    setError(null);
 
-    // In production this calls /api/payments/topup which returns a Paystack URL
-    // For now we simulate the flow
-    await new Promise(r => setTimeout(r, 1500));
-    const ref = "PS-" + Date.now().toString().slice(-8);
-    setReference(ref);
-    setSuccess(true);
+    try {
+      // In production this calls a real Paystack checkout URL; simulated here
+      await new Promise(r => setTimeout(r, 1200));
+
+      const res = await fetch("/api/user/balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: parseInt(finalAmount) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Top-up failed");
+
+      const ref = "PS-" + Date.now().toString().slice(-8);
+      setReference(ref);
+      setNewBalance(data.balance);
+      setSuccess(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Top-up failed");
+    }
     setLoading(false);
   }
 
@@ -54,7 +85,7 @@ export default function TopUpPage() {
                 New Balance
               </p>
               <p className="text-3xl" style={{ fontFamily: "DM Serif Display, serif", color: "#E8941A" }}>
-                ₦{(2450 + parseInt(finalAmount)).toLocaleString()}.00
+                ₦{(newBalance ?? 0).toLocaleString()}.00
               </p>
             </div>
             <div className="p-4">
@@ -117,7 +148,7 @@ export default function TopUpPage() {
               Current Balance
             </p>
             <p style={{ fontFamily: "DM Serif Display, serif", fontSize: "20px", color: "#E8941A" }}>
-              ₦2,450.00
+              {currentBalance === null ? "..." : `₦${currentBalance.toLocaleString()}.00`}
             </p>
           </div>
           <div style={{ fontFamily: "Space Mono, monospace", fontSize: "11px",
@@ -177,7 +208,7 @@ export default function TopUpPage() {
         </div>
 
         {/* Summary */}
-        {finalAmount && parseInt(finalAmount) >= 50 && (
+        {finalAmount && parseInt(finalAmount) >= 50 && currentBalance !== null && (
           <div className="rounded-xl p-4 mb-4"
             style={{ background: "rgba(26,107,60,0.06)", border: "1px solid rgba(26,107,60,0.15)" }}>
             <div className="flex justify-between mb-1">
@@ -188,16 +219,22 @@ export default function TopUpPage() {
             </div>
             <div className="flex justify-between mb-1">
               <span className="text-xs" style={{ color: "#8B7355" }}>Current balance</span>
-              <span className="text-xs font-semibold" style={{ color: "#1A1208" }}>₦2,450</span>
+              <span className="text-xs font-semibold" style={{ color: "#1A1208" }}>
+                ₦{currentBalance.toLocaleString()}
+              </span>
             </div>
             <div className="flex justify-between pt-2"
               style={{ borderTop: "1px solid rgba(26,107,60,0.15)" }}>
               <span className="text-xs font-bold" style={{ color: "#1A6B3C" }}>New balance</span>
               <span className="text-xs font-bold" style={{ color: "#1A6B3C" }}>
-                ₦{(2450 + parseInt(finalAmount)).toLocaleString()}
+                ₦{(currentBalance + parseInt(finalAmount)).toLocaleString()}
               </span>
             </div>
           </div>
+        )}
+
+        {error && (
+          <p className="text-xs mb-3" style={{ color: "#C0392B" }}>{error}</p>
         )}
 
         {/* Pay with Paystack */}
@@ -217,7 +254,6 @@ export default function TopUpPage() {
           SECURED BY PAYSTACK · NO CARD FEES
         </p>
 
-        {/* Minimum notice */}
         <p className="text-center text-xs mt-3" style={{ color: "#8B7355" }}>
           Minimum top-up: ₦50 · Funds never expire
         </p>

@@ -22,22 +22,29 @@ const ROUTES = [
   { value: "intra-umuahia",   label: "Intra-City Umuahia", duration: 20 },
 ];
 
+const BUS_IDS = Array.from({ length: 10 }, (_, i) => `BUS-${String(i + 1).padStart(2, "0")}`);
+
 export default function DriverPage() {
   const { data: session, status } = useSession();
   const role = session?.user?.role;
 
   const [bus, setBus] = useState<Bus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [busLoading, setBusLoading] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState(ROUTES[0].value);
-  const [busIdInput, setBusIdInput] = useState("BUS-01");
+  const [busIdInput, setBusIdInput] = useState(BUS_IDS[0]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (session && role === "driver") fetchMyBus();
-  }, [session, role]);
+    if (session && role === "driver") {
+      fetchMyBus();
+    } else if (status !== "loading") {
+      setBusLoading(false);
+    }
+  }, [session, role, status]);
 
   async function fetchMyBus() {
-    setLoading(true);
+    setBusLoading(true);
     try {
       const res = await fetch("/api/buses/mine");
       if (res.ok) {
@@ -51,11 +58,12 @@ export default function DriverPage() {
     } catch {
       // no existing bus yet, that's fine
     }
-    setLoading(false);
+    setBusLoading(false);
   }
 
   async function startTrip() {
     setSaving(true);
+    setError(null);
     const routeInfo = ROUTES.find(r => r.value === selectedRoute)!;
     try {
       const res = await fetch("/api/buses", {
@@ -72,9 +80,12 @@ export default function DriverPage() {
         }),
       });
       const data = await res.json();
-      if (data.bus) setBus(data.bus);
-    } catch {
-      // silent
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to start trip");
+      }
+      setBus(data.bus);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start trip");
     }
     setSaving(false);
   }
@@ -82,6 +93,7 @@ export default function DriverPage() {
   async function endTrip() {
     if (!bus) return;
     setSaving(true);
+    setError(null);
     try {
       const res = await fetch(`/api/buses/${bus._id}`, {
         method: "PATCH",
@@ -89,9 +101,10 @@ export default function DriverPage() {
         body: JSON.stringify({ status: "idle", progress: 0, occupancy: 0 }),
       });
       const data = await res.json();
-      if (data.bus) setBus(data.bus);
-    } catch {
-      // silent
+      if (!res.ok) throw new Error(data.error || "Failed to end trip");
+      setBus(data.bus);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to end trip");
     }
     setSaving(false);
   }
@@ -113,7 +126,7 @@ export default function DriverPage() {
       const data = await res.json();
       if (data.bus) setBus(data.bus);
     } catch {
-      // silent
+      // silent — next slider move will retry
     }
   }
 
@@ -132,7 +145,8 @@ export default function DriverPage() {
     }
   }
 
-  if (status === "loading" || loading) {
+  // Full-page loader ONLY while auth session itself is resolving
+  if (status === "loading") {
     return (
       <main className="flex flex-col min-h-screen items-center justify-center"
         style={{ background: "#F7F3EC" }}>
@@ -208,13 +222,18 @@ export default function DriverPage() {
           {session.user?.name?.split(" ")[0] || "Driver"}
         </h1>
         <p className="text-xs mt-1" style={{ color: "rgba(253,250,245,0.45)" }}>
-          {isOnRoute ? `On Route · ${bus?.routeLabel}` : "Idle"}
+          {busLoading ? "Checking your status..." : isOnRoute ? `On Route · ${bus?.routeLabel}` : "Idle"}
         </p>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4">
 
-        {!isOnRoute ? (
+        {busLoading ? (
+          <div className="text-center py-12">
+            <div className="text-3xl mb-3">⏳</div>
+            <p className="text-sm" style={{ color: "#8B7355" }}>Checking your trip status...</p>
+          </div>
+        ) : !isOnRoute ? (
           <div className="rounded-xl p-4 mb-4"
             style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.05)" }}>
             <p className="text-xs mb-1" style={{
@@ -222,9 +241,13 @@ export default function DriverPage() {
               letterSpacing: "0.1em", textTransform: "uppercase", color: "#8B7355" }}>
               Bus ID
             </p>
-            <input value={busIdInput} onChange={e => setBusIdInput(e.target.value)}
+            <select value={busIdInput} onChange={e => setBusIdInput(e.target.value)}
               className="w-full p-2.5 rounded-lg text-sm mb-3"
-              style={{ border: "1px solid rgba(26,18,8,0.1)", outline: "none" }} />
+              style={{ border: "1px solid rgba(26,18,8,0.1)", outline: "none" }}>
+              {BUS_IDS.map(id => (
+                <option key={id} value={id}>{id}</option>
+              ))}
+            </select>
 
             <p className="text-xs mb-1" style={{
               fontFamily: "Space Mono, monospace", fontSize: "9px",
@@ -239,6 +262,10 @@ export default function DriverPage() {
               ))}
             </select>
 
+            {error && (
+              <p className="text-xs mb-3" style={{ color: "#C0392B" }}>{error}</p>
+            )}
+
             <button onClick={startTrip} disabled={saving}
               className="w-full py-3.5 rounded-xl text-sm font-bold"
               style={{ background: saving ? "rgba(26,107,60,0.5)" : "#1A6B3C", color: "#fff" }}>
@@ -246,58 +273,62 @@ export default function DriverPage() {
             </button>
           </div>
         ) : (
-          <>
-            {/* Trip status card */}
-            <div className="rounded-xl overflow-hidden mb-4"
-              style={{ background: "#fff", boxShadow: "0 4px 20px rgba(26,18,8,0.08)" }}>
-              <div className="p-4" style={{ background: "#1A6B3C" }}>
-                <p style={{ fontFamily: "Space Mono, monospace", fontSize: "9px",
-                  letterSpacing: "0.1em", textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.6)", marginBottom: "4px" }}>
-                  {bus?.busId} · On Route
-                </p>
-                <p className="text-xl font-bold text-white">
-                  {bus?.routeLabel}
-                </p>
-                <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
-                  ETA {bus?.etaMinutes ?? 0} min · {bus?.occupancy ?? 0} passengers
-                </p>
-              </div>
-
-              <div className="p-4">
-                <p className="text-xs mb-2" style={{
-                  fontFamily: "Space Mono, monospace", fontSize: "9px",
-                  letterSpacing: "0.08em", textTransform: "uppercase", color: "#8B7355" }}>
-                  Trip Progress · {bus?.progress ?? 0}%
-                </p>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={bus?.progress ?? 0}
-                  onChange={e => updateProgress(Number(e.target.value))}
-                  className="w-full mb-1"
-                />
-                <div className="h-2 rounded-full mb-4" style={{ background: "rgba(26,18,8,0.08)" }}>
-                  <div className="h-full rounded-full"
-                    style={{ width: `${bus?.progress ?? 0}%`, background: "#1A6B3C" }} />
-                </div>
-
-                <button onClick={markBoarded}
-                  className="w-full py-3 rounded-xl text-sm font-bold mb-2"
-                  style={{ background: "#E8941A", color: "#fff" }}>
-                  + Mark Passenger Boarded
-                </button>
-
-                <button onClick={endTrip} disabled={saving}
-                  className="w-full py-3 rounded-xl text-sm font-bold"
-                  style={{ background: "transparent", color: "#C0392B",
-                    border: "1.5px solid rgba(192,57,43,0.2)" }}>
-                  {saving ? "Ending..." : "End Trip"}
-                </button>
-              </div>
+          <div className="rounded-xl overflow-hidden mb-4"
+            style={{ background: "#fff", boxShadow: "0 4px 20px rgba(26,18,8,0.08)" }}>
+            <div className="p-4" style={{ background: "#1A6B3C" }}>
+              <p style={{ fontFamily: "Space Mono, monospace", fontSize: "9px",
+                letterSpacing: "0.1em", textTransform: "uppercase",
+                color: "rgba(255,255,255,0.6)", marginBottom: "4px" }}>
+                {bus?.busId} · On Route
+              </p>
+              <p className="text-xl font-bold text-white">
+                {bus?.routeLabel}
+              </p>
+              <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
+                ETA {bus?.etaMinutes ?? 0} min · {bus?.occupancy ?? 0} passengers
+              </p>
             </div>
-          </>
+
+            <div className="p-4">
+              <p className="text-xs mb-2" style={{
+                fontFamily: "Space Mono, monospace", fontSize: "9px",
+                letterSpacing: "0.08em", textTransform: "uppercase", color: "#8B7355" }}>
+                Trip Progress · {bus?.progress ?? 0}%
+              </p>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={bus?.progress ?? 0}
+                onChange={e => updateProgress(Number(e.target.value))}
+                className="w-full mb-1"
+              />
+              <div className="h-2 rounded-full mb-4" style={{ background: "rgba(26,18,8,0.08)" }}>
+                <div className="h-full rounded-full"
+                  style={{ width: `${bus?.progress ?? 0}%`, background: "#1A6B3C" }} />
+              </div>
+
+              <button onClick={markBoarded}
+                className="w-full py-3 rounded-xl text-sm font-bold mb-1"
+                style={{ background: "#E8941A", color: "#fff" }}>
+                + Passenger Boarded (Manual Count)
+              </button>
+              <p className="text-xs mb-3" style={{ color: "#8B7355" }}>
+                Temporary manual count — will switch to automatic Connect Card tap-in once boarding hardware is deployed.
+              </p>
+
+              {error && (
+                <p className="text-xs mb-2" style={{ color: "#C0392B" }}>{error}</p>
+              )}
+
+              <button onClick={endTrip} disabled={saving}
+                className="w-full py-3 rounded-xl text-sm font-bold"
+                style={{ background: "transparent", color: "#C0392B",
+                  border: "1.5px solid rgba(192,57,43,0.2)" }}>
+                {saving ? "Ending..." : "End Trip"}
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

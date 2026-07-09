@@ -18,7 +18,12 @@ export async function PATCH(
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.email || session.user.role !== "driver") {
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+    }
+
+    const role = session.user.role;
+    if (role !== "driver" && role !== "admin") {
       return NextResponse.json({ error: "Not authorized" }, { status: 401 });
     }
 
@@ -32,11 +37,12 @@ export async function PATCH(
     if (body.occupancy !== undefined)  updates.occupancy = body.occupancy;
     if (body.etaMinutes !== undefined) updates.etaMinutes = body.etaMinutes;
 
-    const bus = await Bus.findOneAndUpdate(
-      { _id: params.id, driverEmail: session.user.email },
-      updates,
-      { new: true }
-    );
+    // Admins can update any bus; drivers can only update their own.
+    const filter = role === "admin"
+      ? { _id: params.id }
+      : { _id: params.id, driverEmail: session.user.email };
+
+    const bus = await Bus.findOneAndUpdate(filter, updates, { new: true });
 
     if (!bus) {
       return NextResponse.json({ error: "Bus not found" }, { status: 404 });

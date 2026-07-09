@@ -51,9 +51,26 @@ const SEVERITY_ICON: Record<string, string> = {
   info: "ℹ️", warning: "⚠️", critical: "🚨",
 };
 
+const ROUTE_CHIPS: { label: string; value: string | null }[] = [
+  { label: "All Routes",      value: null },
+  { label: "Umuahia→Aba",     value: "umuahia-aba" },
+  { label: "→Ohafia",         value: "umuahia-ohafia" },
+  { label: "Intra-Aba",       value: "intra-aba" },
+  { label: "Intra-Umuahia",   value: "intra-umuahia" },
+];
+
+const ACTIVE_ROUTES = [
+  { name: "Umuahia → Aba",      fare: "₦800",   buses: 6, dist: "63 km", id: "umuahia-aba"    },
+  { name: "Umuahia → Ohafia",   fare: "₦1,000", buses: 4, dist: "88 km", id: "umuahia-ohafia" },
+  { name: "Intra-City Aba",     fare: "₦150",   buses: 5, dist: "City",  id: "intra-aba"      },
+  { name: "Intra-City Umuahia", fare: "₦150",   buses: 5, dist: "City",  id: "intra-umuahia"  },
+];
+
 export default function TransportPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [liveBuses, setLiveBuses] = useState<LiveBus[]>([]);
+  const [routeFilter, setRouteFilter] = useState<string | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/alerts")
@@ -61,8 +78,13 @@ export default function TransportPage() {
       .then(data => setAlerts(Array.isArray(data) ? data : []))
       .catch(() => setAlerts([]));
 
+    fetch("/api/user/balance")
+      .then(r => r.json())
+      .then(data => setBalance(data.balance ?? 0))
+      .catch(() => setBalance(null));
+
     fetchBuses();
-    const interval = setInterval(fetchBuses, 10000); // poll every 10s
+    const interval = setInterval(fetchBuses, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -72,6 +94,14 @@ export default function TransportPage() {
       .then(data => setLiveBuses(Array.isArray(data) ? data : []))
       .catch(() => setLiveBuses([]));
   }
+
+  const filteredBuses = routeFilter
+    ? liveBuses.filter(b => b.route === routeFilter)
+    : liveBuses;
+
+  const filteredRoutes = routeFilter
+    ? ACTIVE_ROUTES.filter(r => r.id === routeFilter)
+    : ACTIVE_ROUTES;
 
   return (
     <main className="flex flex-col min-h-screen" style={{ background: "#F7F3EC" }}>
@@ -97,17 +127,21 @@ export default function TransportPage() {
 
         {/* Route filter chips */}
         <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-          {["All Routes", "Umuahia→Aba", "→Ohafia", "Intra-Aba", "Intra-Umuahia"].map((r, i) => (
-            <span key={i} className="flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold"
-              style={{
-                background: i === 0 ? "#1A6B3C" : "rgba(255,255,255,0.1)",
-                color: i === 0 ? "#fff" : "rgba(255,255,255,0.6)",
-                fontFamily: "Space Mono, monospace", fontSize: "10px",
-                border: i === 0 ? "none" : "1px solid rgba(255,255,255,0.15)",
-              }}>
-              {r}
-            </span>
-          ))}
+          {ROUTE_CHIPS.map((chip, i) => {
+            const isActive = routeFilter === chip.value;
+            return (
+              <button key={i} onClick={() => setRouteFilter(chip.value)}
+                className="flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold"
+                style={{
+                  background: isActive ? "#1A6B3C" : "rgba(255,255,255,0.1)",
+                  color: isActive ? "#fff" : "rgba(255,255,255,0.6)",
+                  fontFamily: "Space Mono, monospace", fontSize: "10px",
+                  border: isActive ? "none" : "1px solid rgba(255,255,255,0.15)",
+                }}>
+                {chip.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -150,15 +184,15 @@ export default function TransportPage() {
           Live Buses
         </p>
 
-        {liveBuses.length === 0 ? (
+        {filteredBuses.length === 0 ? (
           <div className="rounded-xl p-4 mb-2 text-center"
             style={{ background: "#fff", boxShadow: "0 2px 8px rgba(26,18,8,0.05)" }}>
             <p className="text-xs" style={{ color: "#8B7355" }}>
-              No buses currently on route. Check back soon.
+              {routeFilter ? "No buses currently on this route." : "No buses currently on route. Check back soon."}
             </p>
           </div>
         ) : (
-          liveBuses.map(bus => (
+          filteredBuses.map(bus => (
             <div key={bus._id} className="flex items-center gap-3 p-3 rounded-xl mb-2"
               style={{ background: "#fff", boxShadow: "0 2px 8px rgba(26,18,8,0.05)" }}>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -210,12 +244,7 @@ export default function TransportPage() {
           Active Routes
         </p>
 
-        {[
-          { name: "Umuahia → Aba",      fare: "₦800",   buses: 6, dist: "63 km", id: "umuahia-aba"    },
-          { name: "Umuahia → Ohafia",   fare: "₦1,000", buses: 4, dist: "88 km", id: "umuahia-ohafia" },
-          { name: "Intra-City Aba",     fare: "₦150",   buses: 5, dist: "City",  id: "intra-aba"      },
-          { name: "Intra-City Umuahia", fare: "₦150",   buses: 5, dist: "City",  id: "intra-umuahia"  },
-        ].map((route, i) => (
+        {filteredRoutes.map((route, i) => (
           <Link key={i} href={`/transport/routes/${route.id}`}>
             <div className="flex items-center gap-3 p-3 rounded-xl mb-2"
               style={{ background: "#fff", boxShadow: "0 2px 8px rgba(26,18,8,0.04)" }}>
@@ -290,7 +319,7 @@ export default function TransportPage() {
               <p className="text-xl" style={{
                 fontFamily: "DM Serif Display, serif", color: "#E8941A"
               }}>
-                ₦2,450.00
+                {balance === null ? "..." : `₦${balance.toLocaleString()}.00`}
               </p>
               <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
                 •••• 4821 · Active

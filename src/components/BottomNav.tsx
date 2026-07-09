@@ -1,16 +1,50 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 
-const tabs = [
+const RIDER_TABS = [
   { href: "/",            icon: "🏠", label: "Home"      },
   { href: "/transport",   icon: "🚌", label: "Transport"  },
   { href: "/environment", icon: "🌿", label: "Report"     },
   { href: "/profile",     icon: "👤", label: "Profile"    },
 ];
 
+const DRIVER_TABS = [
+  { href: "/driver",       icon: "🚌", label: "Dashboard" },
+  { href: "/driver/route", icon: "🗺️", label: "My Route"  },
+  { href: "/profile",      icon: "👤", label: "Profile"   },
+];
+
+const ADMIN_TABS = [
+  { href: "/admin",                icon: "📋", label: "Reports"   },
+  { href: "/admin?view=transport", icon: "🚌", label: "Transport" },
+  { href: "/profile",              icon: "👤", label: "Profile"   },
+];
+
 export default function BottomNav() {
   const path = usePathname();
+  const searchParams = useSearchParams();
+  const currentView = searchParams.get("view");
+  const { data: session } = useSession();
+  const role = session?.user?.role;
+
+  const tabs = role === "driver" ? DRIVER_TABS
+    : role === "admin" ? ADMIN_TABS
+    : RIDER_TABS;
+
+  function isActive(href: string) {
+    const [tabPath, tabQuery] = href.split("?");
+    if (tabPath !== path) return false;
+
+    if (tabPath === "/admin") {
+      const tabView = tabQuery?.includes("view=transport") ? "transport" : "reports";
+      const activeView = currentView === "transport" ? "transport" : "reports";
+      return tabView === activeView;
+    }
+
+    return true;
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto">
@@ -23,7 +57,7 @@ export default function BottomNav() {
         }}
       >
         {tabs.map((tab) => {
-          const active = path === tab.href;
+          const active = isActive(tab.href);
           return (
             <Link
               key={tab.href}

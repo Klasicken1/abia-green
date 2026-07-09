@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { auth } from "@/lib/auth";import { Journey } from "@/lib/models/Journey";
+import { auth } from "@/lib/auth";
+import { Journey } from "@/lib/models/Journey";
+import { User } from "@/lib/models/User";
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 let isConnected = false;
@@ -27,6 +29,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "route, from, to, and fare are required" },
         { status: 400 }
+      );
+    }
+
+    const isRealPayment = source !== "manual";
+
+    if (isRealPayment) {
+      const user = await User.findOne({ email: session.user.email });
+      const currentBalance = user?.balance ?? 0;
+
+      if (currentBalance < fare) {
+        return NextResponse.json(
+          {
+            error: "Insufficient Connect Card balance. Please top up to continue.",
+            balance: currentBalance,
+          },
+          { status: 402 }
+        );
+      }
+
+      await User.findOneAndUpdate(
+        { email: session.user.email },
+        { $inc: { balance: -fare } }
       );
     }
 

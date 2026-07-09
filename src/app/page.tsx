@@ -1,11 +1,103 @@
 "use client";
-import { useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { useSession, signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 
 export default function Home() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const role = session?.user?.role;
   const firstName = session?.user?.name?.split(" ")[0] || "Welcome";
+  const [balance, setBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (role === "driver") {
+      router.replace("/driver");
+    } else if (role === "admin") {
+      router.replace("/admin");
+    }
+  }, [role, router]);
+
+  useEffect(() => {
+    if (session && role === "rider") {
+      fetch("/api/user/balance")
+        .then(r => r.json())
+        .then(data => setBalance(data.balance ?? 0))
+        .catch(() => setBalance(null));
+    }
+  }, [session, role]);
+
+  // While auth is resolving, or while a driver/admin is about to be redirected
+  if (status === "loading" || role === "driver" || role === "admin") {
+    return (
+      <main className="flex flex-col min-h-screen items-center justify-center"
+        style={{ background: "#F7F3EC" }}>
+        <div className="text-3xl mb-3">🌿</div>
+        <p className="text-sm" style={{ color: "#8B7355" }}>Loading...</p>
+      </main>
+    );
+  }
+
+  // Signed out — show sign-in landing instead of dashboard content
+  if (!session) {
+    return (
+      <main className="flex flex-col min-h-screen items-center justify-center px-6"
+        style={{ background: "linear-gradient(160deg, #0F3D22 0%, #1A6B3C 100%)" }}>
+        <div className="w-full max-w-sm text-center">
+          <div className="text-5xl mb-4">🌿</div>
+          <h1 className="text-3xl mb-2 text-white"
+            style={{ fontFamily: "DM Serif Display, serif" }}>
+            Abia Green
+          </h1>
+          <p className="text-sm mb-8" style={{ color: "rgba(253,250,245,0.6)" }}>
+            Transport tracking and environmental reporting for Abia State
+          </p>
+
+          <button onClick={() => signIn("google", { callbackUrl: "/" })}
+            className="w-full py-4 rounded-xl text-sm font-bold flex items-center justify-center gap-3 mb-3"
+            style={{ background: "#fff", color: "#1A1208",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/>
+              <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.01c-.72.48-1.63.77-2.7.77-2.08 0-3.84-1.4-4.47-3.29H1.85v2.07A8 8 0 0 0 8.98 17z"/>
+              <path fill="#FBBC05" d="M4.51 10.53c-.16-.48-.25-.99-.25-1.53s.09-1.05.25-1.53V5.4H1.85A8 8 0 0 0 .98 9c0 1.29.31 2.51.87 3.6l2.66-2.07z"/>
+              <path fill="#EA4335" d="M8.98 3.58c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 .87 5.4L3.53 7.47c.63-1.89 2.39-3.89 5.45-3.89z"/>
+            </svg>
+            Continue with Google
+          </button>
+
+          <Link href="/auth/signin">
+            <button className="w-full py-3.5 rounded-xl text-sm font-bold"
+              style={{ background: "rgba(255,255,255,0.1)", color: "#fff",
+                border: "1px solid rgba(255,255,255,0.2)" }}>
+              Sign In with Email
+            </button>
+          </Link>
+
+          <div className="mt-8 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+            <p className="text-xs mb-3" style={{ color: "rgba(253,250,245,0.4)" }}>
+              Want to report an issue without signing in?
+            </p>
+            <Link href="/environment">
+              <button className="w-full py-3 rounded-xl text-xs font-semibold"
+                style={{ background: "transparent", color: "rgba(253,250,245,0.7)",
+                  border: "1px solid rgba(255,255,255,0.15)" }}>
+                Submit or Track a Report →
+              </button>
+            </Link>
+          </div>
+
+          <p className="mt-8 text-xs" style={{
+            fontFamily: "Space Mono, monospace", color: "rgba(253,250,245,0.3)",
+            fontSize: "8px", letterSpacing: "0.08em" }}>
+            MORNING STACK ICT CLUB · IBEKU HIGH SCHOOL
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex flex-col min-h-screen" style={{ background: "#F7F3EC" }}>
@@ -14,23 +106,12 @@ export default function Home() {
       <div className="relative px-5 pt-12 pb-6"
         style={{ background: "linear-gradient(160deg, #0F3D22 0%, #1A6B3C 100%)" }}>
 
-        {/* Admin link — only for gov staff */}
-        {session?.user?.email?.endsWith("@abiastate.gov.ng") && (
-          <Link href="/admin">
-            <div className="absolute top-3 right-4 px-3 py-1 rounded-full text-xs font-bold"
-              style={{ background: "rgba(232,148,26,0.2)", color: "#E8941A",
-                fontFamily: "Space Mono, monospace", fontSize: "9px" }}>
-              ADMIN →
-            </div>
-          </Link>
-        )}
-
         <p className="text-sm mb-1" style={{ color: "rgba(253,250,245,0.55)" }}>
-          {session ? "Good morning," : "Welcome to"}
+          Good morning,
         </p>
         <h1 className="text-2xl mb-5"
           style={{ fontFamily: "DM Serif Display, serif", color: "#fff" }}>
-          {session ? `${firstName} 👋` : "Abia Green 🌿"}
+          {firstName} 👋
         </h1>
 
         {/* Connect Card */}
@@ -46,7 +127,10 @@ export default function Home() {
             </p>
             <p className="text-3xl leading-none"
               style={{ fontFamily: "DM Serif Display, serif", color: "#E8941A" }}>
-              ₦2,450<span className="text-base opacity-60">.00</span>
+              {balance === null
+                ? "..."
+                : <>₦{balance.toLocaleString()}<span className="text-base opacity-60">.00</span></>
+              }
             </p>
             <div className="flex items-center gap-2 mt-2">
               <span className="flex items-center gap-1 px-2 py-1 rounded-full"
@@ -202,41 +286,6 @@ export default function Home() {
             </div>
           ))}
         </div>
-
-        {/* Sign in CTA — only when not signed in */}
-        {!session && (
-          <Link href="/auth/signin">
-            <div className="mt-4 p-4 rounded-xl flex items-center gap-3"
-              style={{ background: "#0F3D22" }}>
-              <span className="text-xl">👤</span>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-white">Sign in to Abia Green</p>
-                <p className="text-xs" style={{ color: "rgba(253,250,245,0.5)" }}>
-                  Access your Connect Card and reports
-                </p>
-              </div>
-              <span className="text-white opacity-50">→</span>
-            </div>
-          </Link>
-        )}
-
-        {/* Admin CTA — for all users to access */}
-        <Link href="/admin">
-          <div className="mt-3 mb-2 p-4 rounded-xl flex items-center gap-3"
-            style={{ background: "rgba(26,18,8,0.04)",
-              border: "1px solid rgba(26,18,8,0.08)" }}>
-            <span className="text-xl">📊</span>
-            <div className="flex-1">
-              <p className="text-sm font-semibold" style={{ color: "#1A1208" }}>
-                Report Dashboard
-              </p>
-              <p className="text-xs" style={{ color: "#8B7355" }}>
-                View all environmental reports
-              </p>
-            </div>
-            <span style={{ color: "#8B7355" }}>→</span>
-          </div>
-        </Link>
 
         {/* Club badge */}
         <div className="flex justify-center mt-4 mb-2">

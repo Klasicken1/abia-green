@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
@@ -9,12 +9,22 @@ export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const loading = status === "loading";
+  const [balance, setBalance] = useState<number | null>(null);
 
   useEffect(() => {
     if (session && !session.user?.role) {
       router.push("/select-role");
     }
   }, [session, router]);
+
+  useEffect(() => {
+    if (session) {
+      fetch("/api/user/balance")
+        .then(r => r.json())
+        .then(data => setBalance(data.balance ?? 0))
+        .catch(() => setBalance(0));
+    }
+  }, [session]);
 
   if (loading) {
     return (
@@ -101,12 +111,12 @@ export default function ProfilePage() {
                 Connect Card Balance
               </p>
               <p className="text-2xl" style={{ fontFamily: "DM Serif Display, serif", color: "#E8941A" }}>
-                ₦2,450.00
+                {balance === null ? "..." : `₦${balance.toLocaleString()}.00`}
               </p>
               <p className="text-xs mt-1 mb-3" style={{ color: "rgba(255,255,255,0.4)" }}>
                 •••• 4821 · Active
               </p>
-              <Link href="/transport">
+              <Link href="/transport/topup">
                 <button className="px-4 py-2 rounded-lg text-xs font-bold"
                   style={{ background: "#E8941A", color: "#fff" }}>
                   Top Up Card
@@ -115,7 +125,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Sign out */}
-            <button onClick={() => signOut({ callbackUrl: "/" })}
+            <button onClick={() => signOut({ callbackUrl: "/auth/signin" })}
               className="w-full py-3.5 rounded-xl text-sm font-semibold"
               style={{ background: "transparent", color: "#C0392B",
                 border: "1.5px solid rgba(192,57,43,0.2)" }}>

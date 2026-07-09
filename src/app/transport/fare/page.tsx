@@ -46,10 +46,10 @@ export default function FareCalculatorPage() {
   const [result, setResult] = useState<{ fare: number; duration: string; route: string } | null>(null);
   const [notFound, setNotFound] = useState(false);
 
-  // --- Payment / journey logging state ---
-  const [paying, setPaying]         = useState(false);
-  const [paySuccess, setPaySuccess] = useState(false);
-  const [payError, setPayError]     = useState<string | null>(null);
+  const [paying, setPaying]           = useState(false);
+  const [paySuccess, setPaySuccess]   = useState(false);
+  const [payError, setPayError]       = useState<string | null>(null);
+  const [insufficientBalance, setInsufficientBalance] = useState(false);
 
   function handleFrom(val: string) {
     setFrom(val);
@@ -57,6 +57,7 @@ export default function FareCalculatorPage() {
     setNotFound(false);
     setPaySuccess(false);
     setPayError(null);
+    setInsufficientBalance(false);
   }
 
   function handleTo(val: string) {
@@ -65,6 +66,7 @@ export default function FareCalculatorPage() {
     setNotFound(false);
     setPaySuccess(false);
     setPayError(null);
+    setInsufficientBalance(false);
   }
 
   function calculate() {
@@ -72,6 +74,7 @@ export default function FareCalculatorPage() {
     setNotFound(false);
     setPaySuccess(false);
     setPayError(null);
+    setInsufficientBalance(false);
     if (!from || !to || from === to) { setNotFound(true); return; }
     const fare = FARES[from]?.[to] || FARES[to]?.[from];
     if (fare) { setResult(fare); } else { setNotFound(true); }
@@ -85,6 +88,7 @@ export default function FareCalculatorPage() {
     setNotFound(false);
     setPaySuccess(false);
     setPayError(null);
+    setInsufficientBalance(false);
   }
 
   async function handlePay() {
@@ -97,6 +101,7 @@ export default function FareCalculatorPage() {
 
     setPaying(true);
     setPayError(null);
+    setInsufficientBalance(false);
     try {
       const res = await fetch("/api/journeys", {
         method: "POST",
@@ -112,6 +117,9 @@ export default function FareCalculatorPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        if (res.status === 402) {
+          setInsufficientBalance(true);
+        }
         throw new Error(err.error || "Payment failed");
       }
 
@@ -158,9 +166,8 @@ export default function FareCalculatorPage() {
           onChange={e => handleFrom(e.target.value)}
           className="w-full p-3 rounded-xl text-sm mb-3"
           style={{ background: "#fff", border: "1.5px solid rgba(26,18,8,0.12)",
-            color: from ? "#1A1208" : "#8B7355", fontFamily: "Inter, sans-serif",
-            outline: "none", appearance: "none",
-            WebkitAppearance: "none" }}>
+            color: from ? "#1A1208" : "#8B7355", fontFamily: "Inter, sans-serif", outline: "none",
+            appearance: "none", WebkitAppearance: "none" }}>
           <option value="">Select departure point</option>
           {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
         </select>
@@ -187,9 +194,8 @@ export default function FareCalculatorPage() {
           onChange={e => handleTo(e.target.value)}
           className="w-full p-3 rounded-xl text-sm mb-4"
           style={{ background: "#fff", border: "1.5px solid rgba(26,18,8,0.12)",
-            color: to ? "#1A1208" : "#8B7355", fontFamily: "Inter, sans-serif",
-            outline: "none", appearance: "none",
-            WebkitAppearance: "none" }}>
+            color: to ? "#1A1208" : "#8B7355", fontFamily: "Inter, sans-serif", outline: "none",
+            appearance: "none", WebkitAppearance: "none" }}>
           <option value="">Select destination</option>
           {LOCATIONS.filter(l => l !== from).map(l => <option key={l} value={l}>{l}</option>)}
         </select>
@@ -261,9 +267,19 @@ export default function FareCalculatorPage() {
             ) : (
               <div className="px-4 pb-4">
                 {payError && (
-                  <p className="text-xs mb-2" style={{ color: "#C0392B" }}>
-                    {payError}
-                  </p>
+                  <div className="mb-2">
+                    <p className="text-xs mb-2" style={{ color: "#C0392B" }}>
+                      {payError}
+                    </p>
+                    {insufficientBalance && (
+                      <Link href="/transport/topup">
+                        <button className="w-full py-2.5 rounded-xl text-xs font-bold mb-2"
+                          style={{ background: "#E8941A", color: "#fff" }}>
+                          Top Up Connect Card →
+                        </button>
+                      </Link>
+                    )}
+                  </div>
                 )}
                 <div className="flex gap-2">
                   <Link href={`/transport/routes/${result.route}`} className="flex-1">
