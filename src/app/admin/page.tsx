@@ -75,6 +75,10 @@ export default function AdminPage() {
   const [filter, setFilter]     = useState("all");
   const [updating, setUpdating] = useState<string | null>(null);
 
+  // Reject-reason flow: which report's reason box is open, and its text
+  const [rejectingId, setRejectingId]   = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+
   const [buses, setBuses] = useState<Bus[]>([]);
   const [busesLoading, setBusesLoading] = useState(true);
   const [endingId, setEndingId] = useState<string | null>(null);
@@ -115,19 +119,38 @@ export default function AdminPage() {
     setBusesLoading(false);
   }
 
-  async function updateStatus(id: string, newStatus: string) {
+  async function updateStatus(id: string, newStatus: string, reason?: string) {
     setUpdating(id);
     try {
       await fetch(`/api/reports/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({
+          status: newStatus,
+          ...(reason ? { rejectionReason: reason } : {}),
+        }),
       });
       await fetchReports();
     } catch {
       // silent
     }
     setUpdating(null);
+  }
+
+  function startReject(id: string) {
+    setRejectingId(id);
+    setRejectReason("");
+  }
+
+  function cancelReject() {
+    setRejectingId(null);
+    setRejectReason("");
+  }
+
+  async function confirmReject(id: string) {
+    await updateStatus(id, "rejected", rejectReason.trim() || undefined);
+    setRejectingId(null);
+    setRejectReason("");
   }
 
   async function forceEndTrip(busId: string) {
@@ -425,23 +448,68 @@ export default function AdminPage() {
                       </p>
                     )}
 
-                    {report.status === "pending_review" ? (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => updateStatus(report._id, "pending")}
-                          disabled={updating === report._id}
-                          className="flex-1 py-2 rounded-lg text-xs font-bold"
-                          style={{ background: "#1A6B3C", color: "#fff" }}>
-                          {updating === report._id ? "..." : "Approve"}
-                        </button>
-                        <button
-                          onClick={() => updateStatus(report._id, "rejected")}
-                          disabled={updating === report._id}
-                          className="flex-1 py-2 rounded-lg text-xs font-bold"
-                          style={{ background: "#C0392B", color: "#fff" }}>
-                          {updating === report._id ? "..." : "Reject"}
-                        </button>
+                    {report.status === "rejected" && report.rejectionReason && (
+                      <div className="rounded-lg p-2 mb-3"
+                        style={{ background: "rgba(192,57,43,0.06)", border: "1px solid rgba(192,57,43,0.15)" }}>
+                        <p style={{ fontFamily: "Space Mono, monospace", fontSize: "8px",
+                          letterSpacing: "0.06em", textTransform: "uppercase", color: "#C0392B",
+                          marginBottom: "2px" }}>
+                          Rejection reason
+                        </p>
+                        <p className="text-xs" style={{ color: "#8B1F1F" }}>
+                          {report.rejectionReason}
+                        </p>
                       </div>
+                    )}
+
+                    {report.status === "pending_review" ? (
+                      rejectingId === report._id ? (
+                        <div>
+                          <textarea
+                            value={rejectReason}
+                            onChange={e => setRejectReason(e.target.value)}
+                            placeholder="Reason for rejecting (optional, but helps if the citizen appeals)"
+                            rows={2}
+                            className="w-full p-2 rounded-lg text-xs mb-2"
+                            style={{ background: "#F7F3EC", border: "1px solid rgba(192,57,43,0.25)",
+                              color: "#1A1208", fontFamily: "Inter, sans-serif",
+                              outline: "none", resize: "none" }}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => confirmReject(report._id)}
+                              disabled={updating === report._id}
+                              className="flex-1 py-2 rounded-lg text-xs font-bold"
+                              style={{ background: "#C0392B", color: "#fff" }}>
+                              {updating === report._id ? "..." : "Confirm Reject"}
+                            </button>
+                            <button
+                              onClick={cancelReject}
+                              disabled={updating === report._id}
+                              className="flex-1 py-2 rounded-lg text-xs font-bold"
+                              style={{ background: "rgba(26,18,8,0.06)", color: "#8B7355" }}>
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => updateStatus(report._id, "pending")}
+                            disabled={updating === report._id}
+                            className="flex-1 py-2 rounded-lg text-xs font-bold"
+                            style={{ background: "#1A6B3C", color: "#fff" }}>
+                            {updating === report._id ? "..." : "Approve"}
+                          </button>
+                          <button
+                            onClick={() => startReject(report._id)}
+                            disabled={updating === report._id}
+                            className="flex-1 py-2 rounded-lg text-xs font-bold"
+                            style={{ background: "#C0392B", color: "#fff" }}>
+                            Reject
+                          </button>
+                        </div>
+                      )
                     ) : (
                       <div className="flex gap-2 flex-wrap">
                         {["pending","assigned","in_progress","resolved"].map(s => (
