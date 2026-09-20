@@ -25,6 +25,12 @@ export default function EnvironmentPage() {
   const [trackingId, setTrackingId]     = useState("");
   const [loading, setLoading]           = useState(false);
 
+  // Honeypot — a real citizen never sees or fills this field (it's visually
+  // hidden but still in the DOM and tabbable-excluded). A bot that
+  // auto-fills every input on the page will fill it, and the server
+  // rejects the submission silently when it's non-empty.
+  const [website, setWebsite] = useState("");
+
   // --- Photo upload state ---
   const [photoFile, setPhotoFile]         = useState<File | null>(null);
   const [photoPreview, setPhotoPreview]   = useState<string | null>(null);
@@ -114,6 +120,7 @@ export default function EnvironmentPage() {
           description,
           photoUrl: finalPhotoUrl || null,
           photoPublicId: finalPhotoPublicId || null,
+          website,
         }),
       });
       const data = await res.json();
@@ -136,6 +143,7 @@ export default function EnvironmentPage() {
     setLga("");
     setDescription("");
     setTrackingId("");
+    setWebsite("");
     removePhoto();
   }
 
@@ -268,6 +276,25 @@ export default function EnvironmentPage() {
 
       <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4">
         <form onSubmit={handleSubmit}>
+
+          {/* Honeypot — visually and functionally hidden from real users.
+              A real citizen can never focus or fill this; a bot that
+              blindly fills every field on the page will. */}
+          <div
+            style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", overflow: "hidden" }}
+            aria-hidden="true"
+          >
+            <label htmlFor="website">Website</label>
+            <input
+              type="text"
+              id="website"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              value={website}
+              onChange={e => setWebsite(e.target.value)}
+            />
+          </div>
 
           <p className="flex items-center gap-2 mb-3" style={{
             fontFamily: "Space Mono, monospace", fontSize: "9px",
