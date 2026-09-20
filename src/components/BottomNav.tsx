@@ -5,9 +5,9 @@ import { useSession } from "next-auth/react";
 
 const RIDER_TABS = [
   { href: "/",            icon: "🏠", label: "Home"      },
-  { href: "/transport",   icon: "🚌", label: "Transport"  },
-  { href: "/environment", icon: "🌿", label: "Report"     },
-  { href: "/profile",     icon: "👤", label: "Profile"    },
+  { href: "/transport",   icon: "🚌", label: "Transport" },
+  { href: "/environment", icon: "🌿", label: "Report"    },
+  { href: "/profile",     icon: "👤", label: "Profile"   },
 ];
 
 const DRIVER_TABS = [
@@ -19,8 +19,11 @@ const DRIVER_TABS = [
 const ADMIN_TABS = [
   { href: "/admin",                icon: "📋", label: "Reports"   },
   { href: "/admin?view=transport", icon: "🚌", label: "Transport" },
+  { href: "/admin/invites",        icon: "✉️", label: "Invites"   },
   { href: "/profile",              icon: "👤", label: "Profile"   },
 ];
+
+const ADMIN_ROLES = ["admin", "superadmin"];
 
 export default function BottomNav() {
   const path = usePathname();
@@ -30,7 +33,7 @@ export default function BottomNav() {
   const role = session?.user?.role;
 
   const tabs = role === "driver" ? DRIVER_TABS
-    : role === "admin" ? ADMIN_TABS
+    : role && ADMIN_ROLES.includes(role) ? ADMIN_TABS
     : RIDER_TABS;
 
   function isActive(href: string) {
