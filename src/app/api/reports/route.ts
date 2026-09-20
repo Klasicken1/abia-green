@@ -17,9 +17,6 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const ip = getClientIp(req);
-    // 5 submissions per 10 minutes per IP — generous enough for a real
-    // citizen reporting multiple genuine issues, tight enough to stop a
-    // script from flooding the dashboard before the handover demo.
     const allowed = await checkRateLimit(`report:${ip}`, 5, 10 * 60 * 1000);
     if (!allowed) {
       return NextResponse.json(
@@ -29,11 +26,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { type, lga, severity, description, photoUrl, website } = body;
+    const { type, lga, severity, description, photoUrl, photoPublicId, website } = body;
 
     // Honeypot: a hidden field named "website" that only a bot would fill.
-    // No-op until the form actually renders it (it doesn't yet) — safe to
-    // ship now, becomes active the moment the field is added client-side.
+    // No-op until the form renders it client-side.
     if (website) {
       return NextResponse.json({ error: "Failed to submit report" }, { status: 400 });
     }
@@ -46,13 +42,10 @@ export async function POST(req: NextRequest) {
     }
 
     // High-severity reports need photo evidence before they go live on the
-    // public dashboard — otherwise a single bad-faith "critical" report
-    // with no proof can sit on the live board next to real ones.
+    // public dashboard.
     const needsReview = (severity === "high" || severity === "critical") && !photoUrl;
 
     // Cheap duplicate signal — same type + LGA within the last 30 minutes.
-    // Flagged for admin attention, never auto-rejected: could be two real
-    // citizens reporting the same flood.
     const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
     const recentSimilar = await Report.findOne({
       type, lga, createdAt: { $gte: thirtyMinAgo },
@@ -67,6 +60,7 @@ export async function POST(req: NextRequest) {
       severity,
       description: description || "",
       photoUrl: photoUrl || null,
+      photoPublicId: photoPublicId || null,
       status: needsReview ? "pending_review" : "pending",
       possibleDuplicate: !!recentSimilar,
     });
@@ -89,10 +83,6 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  // Gated to admin/superadmin — this returns every report's full detail
-  // (description, LGA, severity) and was previously open to anyone who
-  // knew the URL. The public track page uses /api/reports/[id] instead,
-  // so this gate doesn't touch citizen-facing tracking.
   const check = await requireRole(["admin", "superadmin"]);
   if (!check.ok) return check.response;
 

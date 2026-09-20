@@ -6,7 +6,8 @@ const ReportSchema = new mongoose.Schema({
   lga:         { type: String, required: true },
   severity:    { type: String, required: true },
   description: { type: String, default: "" },
-  photoUrl:    { type: String, default: null },
+  photoUrl:      { type: String, default: null },
+  photoPublicId: { type: String, default: null },
 
   // Existing statuses (pending, assigned, in_progress, resolved) are kept
   // exactly as-is so nothing already in the DB or the admin dashboard's

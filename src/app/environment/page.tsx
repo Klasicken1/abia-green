@@ -26,11 +26,12 @@ export default function EnvironmentPage() {
   const [loading, setLoading]           = useState(false);
 
   // --- Photo upload state ---
-  const [photoFile, setPhotoFile]       = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoUrl, setPhotoUrl]         = useState<string | null>(null);
-  const [uploading, setUploading]       = useState(false);
-  const [uploadError, setUploadError]   = useState<string | null>(null);
+  const [photoFile, setPhotoFile]         = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview]   = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl]           = useState<string | null>(null);
+  const [photoPublicId, setPhotoPublicId] = useState<string | null>(null);
+  const [uploading, setUploading]         = useState(false);
+  const [uploadError, setUploadError]     = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -40,6 +41,7 @@ export default function EnvironmentPage() {
     setUploadError(null);
     setPhotoFile(file);
     setPhotoUrl(null);
+    setPhotoPublicId(null);
     setPhotoPreview(URL.createObjectURL(file));
   }
 
@@ -47,6 +49,7 @@ export default function EnvironmentPage() {
     setPhotoFile(null);
     setPhotoPreview(null);
     setPhotoUrl(null);
+    setPhotoPublicId(null);
     setUploadError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
@@ -73,6 +76,7 @@ export default function EnvironmentPage() {
 
       const data = await res.json();
       setPhotoUrl(data.url);
+      setPhotoPublicId(data.publicId);
       setUploading(false);
       return data.url;
     } catch (err) {
@@ -89,8 +93,10 @@ export default function EnvironmentPage() {
     try {
       // Upload photo first if one is attached and not yet uploaded
       let finalPhotoUrl = photoUrl;
+      let finalPhotoPublicId = photoPublicId;
       if (photoFile && !photoUrl) {
         finalPhotoUrl = await uploadPhotoIfNeeded();
+        finalPhotoPublicId = photoPublicId;
         if (!finalPhotoUrl) {
           // Upload failed — stop here, let the user see the error and retry/remove
           setLoading(false);
@@ -107,6 +113,7 @@ export default function EnvironmentPage() {
           severity,
           description,
           photoUrl: finalPhotoUrl || null,
+          photoPublicId: finalPhotoPublicId || null,
         }),
       });
       const data = await res.json();
