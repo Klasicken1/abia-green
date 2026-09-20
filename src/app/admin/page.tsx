@@ -14,6 +14,8 @@ interface Report {
   description: string;
   status: string;
   photoUrl?: string | null;
+  possibleDuplicate?: boolean;
+  rejectionReason?: string | null;
   createdAt: string;
 }
 
@@ -40,11 +42,13 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending:     "#E8941A",
-  assigned:    "#2471A3",
-  in_progress: "#8E44AD",
-  resolved:    "#1A6B3C",
-  closed:      "#8B7355",
+  pending_review: "#C27A10",
+  pending:        "#E8941A",
+  assigned:       "#2471A3",
+  in_progress:    "#8E44AD",
+  resolved:       "#1A6B3C",
+  rejected:       "#C0392B",
+  closed:         "#8B7355",
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -55,10 +59,12 @@ const SEVERITY_COLORS: Record<string, string> = {
 };
 
 const STALE_THRESHOLD_MINUTES = 15;
+const ADMIN_ROLES = ["admin", "superadmin"];
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const role = session?.user?.role;
+  const isAdmin = role ? ADMIN_ROLES.includes(role) : false;
   const searchParams = useSearchParams();
 
   const initialView = searchParams.get("view") === "transport" ? "transport" : "reports";
@@ -79,11 +85,11 @@ export default function AdminPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (session && role === "admin") {
+    if (session && isAdmin) {
       fetchReports();
       fetchBuses();
     }
-  }, [session, role]);
+  }, [session, isAdmin]);
 
   async function fetchReports() {
     setReportsLoading(true);
@@ -186,7 +192,7 @@ export default function AdminPage() {
   }
 
   // Signed in but wrong role
-  if (role !== "admin") {
+  if (!isAdmin) {
     return (
       <main className="flex flex-col min-h-screen items-center justify-center px-4"
         style={{ background: "#F7F3EC" }}>
@@ -215,10 +221,11 @@ export default function AdminPage() {
     : reports.filter(r => r.status === filter);
 
   const counts = {
-    all:         reports.length,
-    pending:     reports.filter(r => r.status === "pending").length,
-    in_progress: reports.filter(r => r.status === "in_progress").length,
-    resolved:    reports.filter(r => r.status === "resolved").length,
+    all:             reports.length,
+    pending_review:  reports.filter(r => r.status === "pending_review").length,
+    pending:         reports.filter(r => r.status === "pending").length,
+    in_progress:     reports.filter(r => r.status === "in_progress").length,
+    resolved:        reports.filter(r => r.status === "resolved").length,
   };
 
   const onRouteBuses = buses.filter(b => b.status === "on_route");
@@ -245,18 +252,24 @@ export default function AdminPage() {
         </p>
         <p className="text-xs mt-0.5" style={{ color: "rgba(253,250,245,0.35)",
           fontFamily: "Space Mono, monospace" }}>
-          Signed in as {session.user?.email}
+          Signed in as {session.user?.email} ({role})
         </p>
 
         {/* View switcher */}
         <div className="flex gap-2 mt-3">
           <button onClick={() => setView("reports")}
-            className="flex-1 py-2 rounded-lg text-xs font-bold"
+            className="flex-1 py-2 rounded-lg text-xs font-bold relative"
             style={{
               background: view === "reports" ? "#1A6B3C" : "rgba(255,255,255,0.1)",
               color: view === "reports" ? "#fff" : "rgba(255,255,255,0.6)",
             }}>
             📋 Reports
+            {counts.pending_review > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-xs"
+                style={{ background: "#C27A10", color: "#fff", fontSize: "9px" }}>
+                {counts.pending_review}
+              </span>
+            )}
           </button>
           <button onClick={() => setView("transport")}
             className="flex-1 py-2 rounded-lg text-xs font-bold relative"
@@ -281,10 +294,10 @@ export default function AdminPage() {
           <div className="grid grid-cols-4 gap-0"
             style={{ background: "#0F3D22", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
             {[
-              { label: "Total",       count: counts.all,         color: "#fff"    },
-              { label: "Pending",     count: counts.pending,     color: "#E8941A" },
-              { label: "In Progress", count: counts.in_progress, color: "#8E44AD" },
-              { label: "Resolved",    count: counts.resolved,    color: "#1A6B3C" },
+              { label: "Total",       count: counts.all,            color: "#fff"    },
+              { label: "Needs Review",count: counts.pending_review, color: "#C27A10" },
+              { label: "Pending",     count: counts.pending,        color: "#E8941A" },
+              { label: "Resolved",    count: counts.resolved,       color: "#1A6B3C" },
             ].map((s, i) => (
               <div key={i} className="py-3 text-center"
                 style={{ borderRight: i < 3 ? "1px solid rgba(255,255,255,0.08)" : "none" }}>
@@ -306,11 +319,13 @@ export default function AdminPage() {
             {/* Filter chips */}
             <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
               {[
-                { key: "all",         label: "All"         },
-                { key: "pending",     label: "Pending"     },
-                { key: "assigned",    label: "Assigned"    },
-                { key: "in_progress", label: "In Progress" },
-                { key: "resolved",    label: "Resolved"    },
+                { key: "all",             label: "All"            },
+                { key: "pending_review",  label: "Needs Review"   },
+                { key: "pending",         label: "Pending"        },
+                { key: "assigned",        label: "Assigned"       },
+                { key: "in_progress",     label: "In Progress"    },
+                { key: "resolved",        label: "Resolved"       },
+                { key: "rejected",        label: "Rejected"       },
               ].map(f => (
                 <button key={f.key} onClick={() => setFilter(f.key)}
                   className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
@@ -345,17 +360,18 @@ export default function AdminPage() {
                   No reports found
                 </p>
                 <p className="text-xs" style={{ color: "#8B7355" }}>
-                  {filter === "all" ? "No reports submitted yet." : `No ${filter} reports.`}
+                  {filter === "all" ? "No reports submitted yet." : `No ${filter.replace("_", " ")} reports.`}
                 </p>
               </div>
             ) : (
               filtered.map(report => (
                 <div key={report._id} className="rounded-xl overflow-hidden mb-3"
-                  style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.06)" }}>
+                  style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.06)",
+                    border: report.status === "pending_review" ? "1.5px solid rgba(194,122,16,0.4)" : "none" }}>
 
                   <div className="px-4 py-3 flex items-center justify-between"
                     style={{ borderBottom: "1px solid rgba(26,18,8,0.06)" }}>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span style={{ fontFamily: "Space Mono, monospace", fontSize: "11px",
                         fontWeight: 700, color: "#1A6B3C" }}>
                         {report.trackingId}
@@ -369,6 +385,13 @@ export default function AdminPage() {
                         }}>
                         {report.severity}
                       </span>
+                      {report.possibleDuplicate && (
+                        <span className="px-2 py-0.5 rounded-full text-xs"
+                          style={{ background: "rgba(139,115,85,0.15)", color: "#8B7355",
+                            fontFamily: "Space Mono, monospace", fontSize: "8px" }}>
+                          Possible duplicate
+                        </span>
+                      )}
                     </div>
                     <span className="px-2 py-0.5 rounded-full text-xs capitalize"
                       style={{
@@ -402,25 +425,44 @@ export default function AdminPage() {
                       </p>
                     )}
 
-                    <div className="flex gap-2 flex-wrap">
-                      {["pending","assigned","in_progress","resolved"].map(s => (
-                        <button key={s}
-                          onClick={() => updateStatus(report._id, s)}
-                          disabled={report.status === s || updating === report._id}
-                          className="px-2 py-1 rounded-lg text-xs capitalize"
-                          style={{
-                            background: report.status === s
-                              ? `${STATUS_COLORS[s]}20` : "rgba(26,18,8,0.04)",
-                            color: report.status === s ? STATUS_COLORS[s] : "#8B7355",
-                            border: report.status === s
-                              ? `1px solid ${STATUS_COLORS[s]}40` : "1px solid rgba(26,18,8,0.08)",
-                            fontFamily: "Space Mono, monospace", fontSize: "8px",
-                            cursor: report.status === s ? "default" : "pointer",
-                          }}>
-                          {updating === report._id ? "..." : s.replace("_", " ")}
+                    {report.status === "pending_review" ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updateStatus(report._id, "pending")}
+                          disabled={updating === report._id}
+                          className="flex-1 py-2 rounded-lg text-xs font-bold"
+                          style={{ background: "#1A6B3C", color: "#fff" }}>
+                          {updating === report._id ? "..." : "Approve"}
                         </button>
-                      ))}
-                    </div>
+                        <button
+                          onClick={() => updateStatus(report._id, "rejected")}
+                          disabled={updating === report._id}
+                          className="flex-1 py-2 rounded-lg text-xs font-bold"
+                          style={{ background: "#C0392B", color: "#fff" }}>
+                          {updating === report._id ? "..." : "Reject"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 flex-wrap">
+                        {["pending","assigned","in_progress","resolved"].map(s => (
+                          <button key={s}
+                            onClick={() => updateStatus(report._id, s)}
+                            disabled={report.status === s || updating === report._id}
+                            className="px-2 py-1 rounded-lg text-xs capitalize"
+                            style={{
+                              background: report.status === s
+                                ? `${STATUS_COLORS[s]}20` : "rgba(26,18,8,0.04)",
+                              color: report.status === s ? STATUS_COLORS[s] : "#8B7355",
+                              border: report.status === s
+                                ? `1px solid ${STATUS_COLORS[s]}40` : "1px solid rgba(26,18,8,0.08)",
+                              fontFamily: "Space Mono, monospace", fontSize: "8px",
+                              cursor: report.status === s ? "default" : "pointer",
+                            }}>
+                            {updating === report._id ? "..." : s.replace("_", " ")}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))

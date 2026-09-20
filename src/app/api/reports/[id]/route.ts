@@ -1,50 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import mongoose from "mongoose";
-
-const MONGODB_URI = process.env.MONGODB_URI!;
-let isConnected = false;
-
-async function connectDB() {
-  if (isConnected) return;
-  await mongoose.connect(MONGODB_URI);
-  isConnected = true;
-}
-
-const ReportSchema = new mongoose.Schema({
-  trackingId:  { type: String, required: true, unique: true },
-  type:        { type: String, required: true },
-  lga:         { type: String, required: true },
-  severity:    { type: String, required: true },
-  description: { type: String },
-  photoUrl:    { type: String, default: null },
-  status:      { type: String, default: "pending" },
-  createdAt:   { type: Date, default: Date.now },
-});
-
-const Report = mongoose.models.Report ||
-  mongoose.model("Report", ReportSchema);
+import { connectDB } from "@/lib/db";
+import { Report } from "@/lib/models/Report";
+import { requireRole } from "@/lib/rbac";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Public — citizens track their own report by trackingId, no auth needed.
   try {
     await connectDB();
-    const report = await Report.findOne({
-      trackingId: params.id.toUpperCase()
-    });
+    const report = await Report.findOne({ trackingId: params.id.toUpperCase() });
     if (!report) {
-      return NextResponse.json(
-        { error: "Report not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
     return NextResponse.json(report);
   } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch report" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch report" }, { status: 500 });
   }
 }
 
@@ -52,29 +24,35 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Previously anyone who guessed a report's Mongo _id could change its
+  // status — no auth check existed. Now gated to admin/superadmin.
+  const check = await requireRole(["admin", "superadmin"]);
+  if (!check.ok) return check.response;
+
   try {
     await connectDB();
     const body = await req.json();
-    const { status } = body;
+    const { status, rejectionReason } = body;
 
-    const report = await Report.findByIdAndUpdate(
-      params.id,
-      { status },
-      { new: true }
-    );
+    const update: Record<string, unknown> = { status };
+
+    // Log who moderated a held or rejected report, and when.
+    if (status === "rejected" || status === "resolved") {
+      update.moderatedBy = check.email;
+      update.moderatedAt = new Date();
+    }
+    if (status === "rejected" && rejectionReason) {
+      update.rejectionReason = rejectionReason;
+    }
+
+    const report = await Report.findByIdAndUpdate(params.id, update, { new: true });
 
     if (!report) {
-      return NextResponse.json(
-        { error: "Report not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
     return NextResponse.json(report);
   } catch {
-    return NextResponse.json(
-      { error: "Failed to update report" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update report" }, { status: 500 });
   }
 }

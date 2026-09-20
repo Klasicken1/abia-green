@@ -1,40 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
-import mongoose from "mongoose";
-
-const MONGODB_URI = process.env.MONGODB_URI!;
-
-let isConnected = false;
-
-async function connectDB() {
-  if (isConnected) return;
-  await mongoose.connect(MONGODB_URI);
-  isConnected = true;
-}
-
-const ReportSchema = new mongoose.Schema({
-  trackingId:  { type: String, required: true, unique: true },
-  type:        { type: String, required: true },
-  lga:         { type: String, required: true },
-  severity:    { type: String, required: true },
-  description: { type: String },
-  photoUrl:    { type: String, default: null },
-  status:      { type: String, default: "pending" },
-  createdAt:   { type: Date, default: Date.now },
-});
-
-const Report = mongoose.models.Report ||
-  mongoose.model("Report", ReportSchema);
+import { connectDB } from "@/lib/db";
+import { Report } from "@/lib/models/Report";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { requireRole } from "@/lib/rbac";
 
 function generateId(): string {
   return "AG-" + Math.floor(100000 + Math.random() * 900000);
+}
+
+function getClientIp(req: NextRequest): string {
+  return req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
 }
 
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
+    const ip = getClientIp(req);
+    // 5 submissions per 10 minutes per IP — generous enough for a real
+    // citizen reporting multiple genuine issues, tight enough to stop a
+    // script from flooding the dashboard before the handover demo.
+    const allowed = await checkRateLimit(`report:${ip}`, 5, 10 * 60 * 1000);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many reports submitted. Please try again in a few minutes." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
-    const { type, lga, severity, description, photoUrl } = body;
+    const { type, lga, severity, description, photoUrl, website } = body;
+
+    // Honeypot: a hidden field named "website" that only a bot would fill.
+    // No-op until the form actually renders it (it doesn't yet) — safe to
+    // ship now, becomes active the moment the field is added client-side.
+    if (website) {
+      return NextResponse.json({ error: "Failed to submit report" }, { status: 400 });
+    }
 
     if (!type || !lga || !severity) {
       return NextResponse.json(
@@ -42,6 +44,19 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // High-severity reports need photo evidence before they go live on the
+    // public dashboard — otherwise a single bad-faith "critical" report
+    // with no proof can sit on the live board next to real ones.
+    const needsReview = (severity === "high" || severity === "critical") && !photoUrl;
+
+    // Cheap duplicate signal — same type + LGA within the last 30 minutes.
+    // Flagged for admin attention, never auto-rejected: could be two real
+    // citizens reporting the same flood.
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const recentSimilar = await Report.findOne({
+      type, lga, createdAt: { $gte: thirtyMinAgo },
+    });
 
     const trackingId = generateId();
 
@@ -52,13 +67,16 @@ export async function POST(req: NextRequest) {
       severity,
       description: description || "",
       photoUrl: photoUrl || null,
-      status: "pending",
+      status: needsReview ? "pending_review" : "pending",
+      possibleDuplicate: !!recentSimilar,
     });
 
     return NextResponse.json({
       success: true,
       trackingId: report.trackingId,
-      message: "Report submitted successfully",
+      message: needsReview
+        ? "Report received and is being reviewed."
+        : "Report submitted successfully",
     }, { status: 201 });
 
   } catch (err) {
@@ -71,11 +89,16 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  // Gated to admin/superadmin — this returns every report's full detail
+  // (description, LGA, severity) and was previously open to anyone who
+  // knew the URL. The public track page uses /api/reports/[id] instead,
+  // so this gate doesn't touch citizen-facing tracking.
+  const check = await requireRole(["admin", "superadmin"]);
+  if (!check.ok) return check.response;
+
   try {
     await connectDB();
-    const reports = await Report.find({})
-      .sort({ createdAt: -1 })
-      .limit(50);
+    const reports = await Report.find({}).sort({ createdAt: -1 }).limit(50);
     return NextResponse.json(reports);
   } catch (err) {
     console.error("GET /api/reports failed:", err);
