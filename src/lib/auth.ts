@@ -1,16 +1,8 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import mongoose from "mongoose";
+import { connectDB } from "@/lib/db";
 import { User } from "@/lib/models/User";
-
-const MONGODB_URI = process.env.MONGODB_URI!;
-let isConnected = false;
-
-async function connectDB() {
-  if (isConnected) return;
-  await mongoose.connect(MONGODB_URI);
-  isConnected = true;
-}
+import { Invite } from "@/lib/models/Invite";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -21,18 +13,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async jwt({ token }) {
-      if (token.email) {
-        try {
-          await connectDB();
-          let user = await User.findOne({ email: token.email });
-          if (!user) {
-            user = await User.create({ email: token.email, role: null });
+      if (!token.email) return token;
+
+      try {
+        await connectDB();
+        let user = await User.findOne({ email: token.email });
+
+        if (!user) {
+          // First-ever sign-in for this email. Check for a pending invite
+          // before falling back to the schema default ("citizen").
+          const invite = await Invite.findOne({ email: token.email, usedAt: null });
+
+          user = await User.create({
+            email: token.email,
+            ...(invite ? { role: invite.role } : {}),
+          });
+
+          if (invite) {
+            invite.usedAt = new Date();
+            await invite.save();
           }
-          token.role = user.role;
-        } catch (err) {
-          console.error("JWT role lookup failed:", err);
         }
+
+        token.role = user.role;
+      } catch (err) {
+        console.error("JWT role lookup failed:", err);
       }
+
       return token;
     },
     async session({ session, token }) {
