@@ -18,9 +18,10 @@ async function getReport(trackingId: string) {
 export default async function TrackPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const report = await getReport(params.id.toUpperCase());
+  const { id } = await params;
+  const report = await getReport(id.toUpperCase());
 
   const typeLabels: Record<string, string> = {
     illegal_dump:    "Illegal Refuse Dump",
@@ -66,7 +67,7 @@ export default async function TrackPage({
             Report Not Found
           </h2>
           <p className="text-sm text-center mb-6" style={{ color: "#8B7355" }}>
-            No report found for <strong>{params.id.toUpperCase()}</strong>.
+            No report found for <strong>{id.toUpperCase()}</strong>.
             Check the tracking ID and try again.
           </p>
           <Link href="/environment">

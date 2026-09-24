@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
@@ -18,11 +18,12 @@ const TransportMap = dynamic(() => import("@/components/TransportMap"), {
 export default function RouteDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = use(params);
   const [paid, setPaid] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
-  const route = ROUTES[params.id];
+  const route = ROUTES[id];
 
   useEffect(() => {
     fetch("/api/user/balance")

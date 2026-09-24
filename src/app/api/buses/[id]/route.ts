@@ -1,22 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import mongoose from "mongoose";
+import { connectDB } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { Bus } from "@/lib/models/Bus";
 
-const MONGODB_URI = process.env.MONGODB_URI!;
-let isConnected = false;
-
-async function connectDB() {
-  if (isConnected) return;
-  await mongoose.connect(MONGODB_URI);
-  isConnected = true;
-}
-
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Not authorized" }, { status: 401 });
@@ -39,8 +32,8 @@ export async function PATCH(
 
     // Admins can update any bus; drivers can only update their own.
     const filter = role === "admin"
-      ? { _id: params.id }
-      : { _id: params.id, driverEmail: session.user.email };
+      ? { _id: id }
+      : { _id: id, driverEmail: session.user.email };
 
     const bus = await Bus.findOneAndUpdate(filter, updates, { new: true });
 

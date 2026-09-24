@@ -5,12 +5,12 @@ import { requireRole } from "@/lib/rbac";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  // Public — citizens track their own report by trackingId, no auth needed.
+  const { id } = await params;
   try {
     await connectDB();
-    const report = await Report.findOne({ trackingId: params.id.toUpperCase() });
+    const report = await Report.findOne({ trackingId: id.toUpperCase() });
     if (!report) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
@@ -22,10 +22,10 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  // Previously anyone who guessed a report's Mongo _id could change its
-  // status — no auth check existed. Now gated to admin/superadmin.
+  const { id } = await params;
+
   const check = await requireRole(["admin", "superadmin"]);
   if (!check.ok) return check.response;
 
@@ -36,7 +36,6 @@ export async function PATCH(
 
     const update: Record<string, unknown> = { status };
 
-    // Log who moderated a held or rejected report, and when.
     if (status === "rejected" || status === "resolved") {
       update.moderatedBy = check.email;
       update.moderatedAt = new Date();
@@ -45,7 +44,7 @@ export async function PATCH(
       update.rejectionReason = rejectionReason;
     }
 
-    const report = await Report.findByIdAndUpdate(params.id, update, { new: true });
+    const report = await Report.findByIdAndUpdate(id, update, { new: true });
 
     if (!report) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
