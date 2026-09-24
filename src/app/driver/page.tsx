@@ -118,7 +118,7 @@ export default function DriverPage() {
     setBus({ ...bus, progress: newProgress, etaMinutes });
 
     try {
-      const res = await fetch(`/api/buses/${bus._id}`, {
+      const res = await fetch("/api/buses/telemetry", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ progress: newProgress, etaMinutes }),
@@ -135,7 +135,7 @@ export default function DriverPage() {
     const newOccupancy = bus.occupancy + 1;
     setBus({ ...bus, occupancy: newOccupancy });
     try {
-      await fetch(`/api/buses/${bus._id}`, {
+      await fetch("/api/buses/telemetry", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ occupancy: newOccupancy }),
