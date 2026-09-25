@@ -140,6 +140,14 @@ export default function DriverRoutePage() {
               </p>
             </div>
 
+            {/* Boarding QR */}
+            <Link href="/driver/route/qr">
+              <button className="w-full py-3 rounded-xl text-sm font-bold mb-4"
+                style={{ background: "#E8941A", color: "#fff" }}>
+                📱 Show Boarding QR
+              </button>
+            </Link>
+
             {/* Stops */}
             <p className="flex items-center gap-2 mb-3" style={{
               fontFamily: "Space Mono, monospace", fontSize: "9px",
