@@ -4,7 +4,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 // Abia State bus routes — real coordinates
-const ROUTES = [
+export const ROUTES = [
   {
     id: "umuahia-aba",
     name: "Umuahia → Aba",
@@ -27,7 +27,7 @@ const ROUTES = [
   },
 ];
 
-const BUS_POSITIONS = [
+export const BUS_POSITIONS = [
   { id: "BUS-04", lng: 7.4200, lat: 5.3000, route: "Umuahia → Aba" },
   { id: "BUS-11", lng: 7.6000, lat: 5.5800, route: "Umuahia → Ohafia" },
   { id: "BUS-07", lng: 7.4600, lat: 5.4200, route: "Umuahia → Aba" },
