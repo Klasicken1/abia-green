@@ -103,18 +103,12 @@ export default function RouteDetailPage({
               50% government subsidy applied
             </p>
           </div>
-          {paid ? (
-            <div className="text-center">
-              <div className="text-2xl mb-1">✅</div>
-              <p className="text-xs font-semibold" style={{ color: "#1A6B3C" }}>Paid</p>
-            </div>
-          ) : (
-            <button onClick={() => setPaid(true)}
-              className="px-5 py-3 rounded-xl text-sm font-bold"
+          <Link href="/transport/scan">
+            <button className="px-5 py-3 rounded-xl text-sm font-bold"
               style={{ background: "#0F3D22", color: "#fff" }}>
-              Pay with Card
+              Scan to Pay
             </button>
-          )}
+          </Link>
         </div>
 
         {/* Map */}

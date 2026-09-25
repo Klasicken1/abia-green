@@ -4,10 +4,11 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 const RIDER_TABS = [
-  { href: "/",            icon: "🏠", label: "Home"      },
-  { href: "/transport",   icon: "🚌", label: "Transport" },
-  { href: "/environment", icon: "🌿", label: "Report"    },
-  { href: "/profile",     icon: "👤", label: "Profile"   },
+  { href: "/",              icon: "🏠", label: "Home"      },
+  { href: "/transport",     icon: "🚌", label: "Transport" },
+  { href: "/transport/scan",icon: "📷", label: "Scan"      },
+  { href: "/environment",   icon: "🌿", label: "Report"    },
+  { href: "/profile",       icon: "👤", label: "Profile"   },
 ];
 
 const DRIVER_TABS = [
