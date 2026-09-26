@@ -33,6 +33,33 @@ function greetingForNow(): string {
   return "Good evening";
 }
 
+const MISSIONS = [
+  {
+    key: "move",
+    icon: "🚌",
+    name: "Move Green",
+    sub: "AGSS · Abia Green Shuttle System",
+    desc: "A professional public e-transit network — citizens ride and pay the way Bolt riders do, drivers operate from real dashboards, and the Ministry of Transport runs the network from a genuine fleet control room.",
+    gradient: "linear-gradient(155deg, #0F3D22, #143D26)",
+  },
+  {
+    key: "live",
+    icon: "🌿",
+    name: "Live Green",
+    sub: "AEIS · Abia Environmental Intelligence System",
+    desc: "State-level environmental intelligence. Every citizen is a sensor — reports are tracked to resolution with proof, not filed and forgotten, and patterns in the data become policy signals over time.",
+    gradient: "linear-gradient(155deg, #1A6B3C, #0F3D22)",
+  },
+  {
+    key: "govern",
+    icon: "🏛️",
+    name: "Govern Green",
+    sub: "The connective layer",
+    desc: "Where transport and environmental accountability meet government response — built so tomorrow's integrations plug in without rebuilding what already works today.",
+    gradient: "linear-gradient(155deg, #3D2800, #42280A)",
+  },
+];
+
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -348,6 +375,64 @@ export default function Home() {
               })}
             </div>
           )}
+        </div>
+
+        {/* ── VISION SECTION — landing-page style ── */}
+        <div className="mt-8 -mx-4 px-4 py-8 relative overflow-hidden"
+          style={{ background: "linear-gradient(180deg, #0F3D22 0%, #1A2E1F 100%)" }}>
+          <div className="hero-glow" />
+
+          <div className="relative text-center mb-6">
+            <p style={{ fontFamily: "Space Mono, monospace", fontSize: "9px",
+              letterSpacing: "0.16em", textTransform: "uppercase", color: "#E8941A" }}>
+              The Vision
+            </p>
+            <h2 className="mt-2 mb-3" style={{
+              fontFamily: "DM Serif Display, serif", fontSize: "26px",
+              lineHeight: 1.25, color: "#fff" }}>
+              The Operating System<br />of a Green State
+            </h2>
+            <p className="text-xs px-2 leading-relaxed" style={{ color: "rgba(253,250,245,0.65)" }}>
+              Denmark and Switzerland aren&apos;t green because of one policy —
+              they&apos;re green because clean transport, environmental accountability,
+              and citizen participation run on shared infrastructure.
+              Abia Green is that infrastructure for Abia State.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 relative">
+            {MISSIONS.map((m, i) => (
+              <div key={m.key} className="vision-card rounded-2xl p-4"
+                style={{ background: m.gradient, animationDelay: `${i * 0.12}s`,
+                  boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
+                  border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl flex-shrink-0">{m.icon}</span>
+                  <div>
+                    <p className="text-sm font-bold text-white"
+                      style={{ fontFamily: "DM Serif Display, serif" }}>
+                      {m.name}
+                    </p>
+                    <p className="mb-2" style={{ fontFamily: "Space Mono, monospace",
+                      fontSize: "8px", letterSpacing: "0.06em",
+                      textTransform: "uppercase", color: "rgba(253,250,245,0.5)" }}>
+                      {m.sub}
+                    </p>
+                    <p className="text-xs leading-relaxed" style={{ color: "rgba(253,250,245,0.75)" }}>
+                      {m.desc}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="relative text-center mt-6 pt-5"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            <p className="text-xs italic leading-relaxed px-2" style={{ color: "rgba(253,250,245,0.5)" }}>
+              &ldquo;Built by young Abians, for the Abia State they want to live in.&rdquo;
+            </p>
+          </div>
         </div>
 
         {/* Club badge */}
