@@ -26,6 +26,13 @@ function formatRelativeTime(iso: string): string {
   return `${days}d ago`;
 }
 
+function greetingForNow(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -83,9 +90,10 @@ export default function Home() {
   // Signed out — show sign-in landing instead of dashboard content
   if (!session) {
     return (
-      <main className="flex flex-col min-h-screen items-center justify-center px-6"
+      <main className="flex flex-col min-h-screen items-center justify-center px-6 relative overflow-hidden"
         style={{ background: "linear-gradient(160deg, #0F3D22 0%, #1A6B3C 100%)" }}>
-        <div className="w-full max-w-sm text-center">
+        <div className="hero-glow" />
+        <div className="w-full max-w-sm text-center relative">
           <div className="text-5xl mb-4">🌿</div>
           <h1 className="text-3xl mb-2 text-white"
             style={{ fontFamily: "DM Serif Display, serif" }}>
@@ -143,38 +151,40 @@ export default function Home() {
     <main className="flex flex-col min-h-screen" style={{ background: "#F7F3EC" }}>
 
       {/* ── HERO SECTION ── */}
-      <div className="relative px-5 pt-12 pb-6"
+      <div className="relative px-5 pt-12 pb-7 overflow-hidden"
         style={{ background: "linear-gradient(160deg, #0F3D22 0%, #1A6B3C 100%)" }}>
+        <div className="hero-glow" />
 
-        <p className="text-sm mb-1" style={{ color: "rgba(253,250,245,0.55)" }}>
-          Good morning,
+        <p className="text-sm mb-1 relative" style={{ color: "rgba(253,250,245,0.55)" }}>
+          {greetingForNow()},
         </p>
-        <h1 className="text-2xl mb-5"
-          style={{ fontFamily: "DM Serif Display, serif", color: "#fff" }}>
+        <h1 className="text-3xl mb-5 relative"
+          style={{ fontFamily: "DM Serif Display, serif", color: "#fff", letterSpacing: "-0.01em" }}>
           {firstName} 👋
         </h1>
 
         {/* Connect Card */}
-        <div className="rounded-xl p-4 flex items-center justify-between"
-          style={{ background: "rgba(255,255,255,0.1)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            backdropFilter: "blur(12px)" }}>
+        <div className="rounded-2xl p-5 flex items-center justify-between relative"
+          style={{ background: "rgba(255,255,255,0.09)",
+            border: "1px solid rgba(255,255,255,0.18)",
+            backdropFilter: "blur(16px)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
           <div>
-            <p className="mb-1" style={{ fontFamily: "Space Mono, monospace",
-              fontSize: "9px", letterSpacing: "0.1em", textTransform: "uppercase",
+            <p className="mb-1.5" style={{ fontFamily: "Space Mono, monospace",
+              fontSize: "9px", letterSpacing: "0.12em", textTransform: "uppercase",
               color: "rgba(255,255,255,0.5)" }}>
               Connect Card Balance
             </p>
-            <p className="text-3xl leading-none"
+            <p className="text-4xl leading-none balance-glow"
               style={{ fontFamily: "DM Serif Display, serif", color: "#E8941A" }}>
               {balance === null
                 ? "..."
-                : <>₦{balance.toLocaleString()}<span className="text-base opacity-60">.00</span></>
+                : <>₦{balance.toLocaleString()}<span className="text-lg opacity-60">.00</span></>
               }
             </p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="flex items-center gap-1 px-2 py-1 rounded-full"
-                style={{ background: "rgba(26,107,60,0.3)",
+            <div className="flex items-center gap-2 mt-3">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                style={{ background: "rgba(26,107,60,0.35)",
                   fontFamily: "Space Mono, monospace", fontSize: "8px", color: "#90EE90" }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse"
                   style={{ background: "#90EE90" }} />
@@ -187,9 +197,10 @@ export default function Home() {
             </div>
           </div>
           <Link href="/transport/topup">
-            <div className="w-10 h-7 rounded flex items-center justify-center text-xs font-bold"
+            <div className="tile-lift w-11 h-8 rounded-lg flex items-center justify-center text-xs font-bold cursor-pointer"
               style={{ background: "linear-gradient(135deg, #E8941A, #C27A10)",
-                color: "#fff", fontSize: "9px" }}>
+                color: "#fff", fontSize: "9px",
+                boxShadow: "0 4px 14px rgba(232,148,26,0.35)" }}>
               TOP UP
             </div>
           </Link>
@@ -200,7 +211,7 @@ export default function Home() {
       <div className="flex-1 overflow-y-auto pb-24 px-4">
 
         {/* Module tiles */}
-        <div className="mt-4 mb-1">
+        <div className="mt-5 mb-1">
           <p className="flex items-center gap-2 mb-3" style={{
             fontFamily: "Space Mono, monospace", fontSize: "9px",
             letterSpacing: "0.14em", textTransform: "uppercase", color: "#1A6B3C" }}>
@@ -209,8 +220,9 @@ export default function Home() {
           </p>
           <div className="grid grid-cols-2 gap-3">
             <Link href="/transport">
-              <div className="rounded-xl p-4 flex flex-col gap-2 cursor-pointer"
-                style={{ background: "#0F3D22" }}>
+              <div className="tile-lift rounded-2xl p-4 flex flex-col gap-2 cursor-pointer relative overflow-hidden"
+                style={{ background: "linear-gradient(155deg, #0F3D22, #143D26)",
+                  boxShadow: "0 6px 20px rgba(15,61,34,0.25)" }}>
                 <span className="text-2xl">🚌</span>
                 <span className="font-semibold text-sm text-white"
                   style={{ fontFamily: "DM Serif Display, serif" }}>
@@ -220,21 +232,22 @@ export default function Home() {
                   4 routes · {liveBusCount !== null ? `${liveBusCount} buses live` : "Live tracking"}
                 </span>
                 <div className="flex items-center justify-between mt-1">
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full"
-                    style={{ background: "rgba(26,107,60,0.3)",
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+                    style={{ background: "rgba(26,107,60,0.35)",
                       fontFamily: "Space Mono, monospace", fontSize: "8px", color: "#90EE90" }}>
                     <span className="w-1.5 h-1.5 rounded-full animate-pulse"
                       style={{ background: "#90EE90" }} />
                     Live
                   </span>
-                  <span style={{ color: "rgba(253,250,245,0.3)", fontSize: "14px" }}>→</span>
+                  <span style={{ color: "rgba(253,250,245,0.4)", fontSize: "15px" }}>→</span>
                 </div>
               </div>
             </Link>
 
             <Link href="/environment">
-              <div className="rounded-xl p-4 flex flex-col gap-2 cursor-pointer"
-                style={{ background: "#3D2800" }}>
+              <div className="tile-lift rounded-2xl p-4 flex flex-col gap-2 cursor-pointer relative overflow-hidden"
+                style={{ background: "linear-gradient(155deg, #3D2800, #42280A)",
+                  boxShadow: "0 6px 20px rgba(61,40,0,0.25)" }}>
                 <span className="text-2xl">🌿</span>
                 <span className="font-semibold text-sm text-white"
                   style={{ fontFamily: "DM Serif Display, serif" }}>
@@ -244,7 +257,7 @@ export default function Home() {
                   Report issues to ASEPA instantly
                 </span>
                 <div className="flex items-center justify-end mt-1">
-                  <span style={{ color: "rgba(253,250,245,0.3)", fontSize: "14px" }}>→</span>
+                  <span style={{ color: "rgba(253,250,245,0.4)", fontSize: "15px" }}>→</span>
                 </div>
               </div>
             </Link>
@@ -253,8 +266,8 @@ export default function Home() {
 
         {/* Stats row — real, scoped to this citizen */}
         {stats && (
-          <div className="rounded-xl p-4 mt-4"
-            style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.05)" }}>
+          <div className="rounded-2xl p-4 mt-4"
+            style={{ background: "#fff", boxShadow: "0 4px 16px rgba(26,18,8,0.06)" }}>
             <p className="flex items-center gap-2 mb-3" style={{
               fontFamily: "Space Mono, monospace", fontSize: "9px",
               letterSpacing: "0.14em", textTransform: "uppercase", color: "#C27A10" }}>
@@ -263,22 +276,22 @@ export default function Home() {
             </p>
             <div className="grid grid-cols-2 divide-x divide-gray-100">
               <div className="text-center px-2">
-                <p className="text-xl leading-none"
+                <p className="text-2xl leading-none"
                   style={{ fontFamily: "DM Serif Display, serif", color: "#E8941A" }}>
                   {stats.ridesThisMonth}
                 </p>
-                <p className="mt-1" style={{ fontFamily: "Space Mono, monospace",
+                <p className="mt-1.5" style={{ fontFamily: "Space Mono, monospace",
                   fontSize: "8px", letterSpacing: "0.08em",
                   textTransform: "uppercase", color: "#8B7355" }}>
                   Rides
                 </p>
               </div>
               <div className="text-center px-2">
-                <p className="text-xl leading-none"
+                <p className="text-2xl leading-none"
                   style={{ fontFamily: "DM Serif Display, serif", color: "#1A6B3C" }}>
                   ₦{stats.spentThisMonth.toLocaleString()}
                 </p>
-                <p className="mt-1" style={{ fontFamily: "Space Mono, monospace",
+                <p className="mt-1.5" style={{ fontFamily: "Space Mono, monospace",
                   fontSize: "8px", letterSpacing: "0.08em",
                   textTransform: "uppercase", color: "#8B7355" }}>
                   Spent
@@ -289,7 +302,7 @@ export default function Home() {
         )}
 
         {/* Recent Activity — real Transaction history */}
-        <div className="mt-4">
+        <div className="mt-5">
           <p className="flex items-center gap-2 mb-3" style={{
             fontFamily: "Space Mono, monospace", fontSize: "9px",
             letterSpacing: "0.14em", textTransform: "uppercase", color: "#C27A10" }}>
@@ -297,52 +310,55 @@ export default function Home() {
             Recent
           </p>
           {recent.length === 0 ? (
-            <div className="rounded-xl p-4 text-center"
+            <div className="rounded-2xl p-5 text-center"
               style={{ background: "#fff", boxShadow: "0 2px 8px rgba(26,18,8,0.05)" }}>
               <p className="text-xs" style={{ color: "#8B7355" }}>
                 No activity yet — take your first ride or top up your card.
               </p>
             </div>
           ) : (
-            recent.map((txn, i) => {
-              const routeInfo = txn.route ? ROUTES[txn.route] : null;
-              const isFare = txn.type === "fare";
-              return (
-                <div key={txn._id} className="flex items-center gap-3 py-3"
-                  style={{ borderBottom: i < recent.length - 1 ? "1px solid rgba(26,18,8,0.06)" : "none" }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-                    style={{ background: isFare ? "rgba(26,107,60,0.1)" : "rgba(232,148,26,0.1)" }}>
-                    {isFare ? "🚌" : "💳"}
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: "#fff", boxShadow: "0 4px 16px rgba(26,18,8,0.05)" }}>
+              {recent.map((txn, i) => {
+                const routeInfo = txn.route ? ROUTES[txn.route] : null;
+                const isFare = txn.type === "fare";
+                return (
+                  <div key={txn._id} className="flex items-center gap-3 px-4 py-3.5"
+                    style={{ borderBottom: i < recent.length - 1 ? "1px solid rgba(26,18,8,0.06)" : "none" }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+                      style={{ background: isFare ? "rgba(26,107,60,0.1)" : "rgba(232,148,26,0.1)" }}>
+                      {isFare ? "🚌" : "💳"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate" style={{ color: "#1A1208" }}>
+                        {isFare
+                          ? `Fare paid${routeInfo ? ` · ${routeInfo.name}` : ""}`
+                          : "Card topped up"}
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: "#8B7355" }}>
+                        ₦{txn.amount.toLocaleString()} · {isFare ? "Connect Card" : txn.paymentMethod}
+                      </p>
+                    </div>
+                    <span className="flex-shrink-0" style={{
+                      fontFamily: "Space Mono, monospace", fontSize: "9px", color: "#8B7355" }}>
+                      {formatRelativeTime(txn.createdAt)}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate" style={{ color: "#1A1208" }}>
-                      {isFare
-                        ? `Fare paid${routeInfo ? ` · ${routeInfo.name}` : ""}`
-                        : "Card topped up"}
-                    </p>
-                    <p className="text-xs mt-0.5" style={{ color: "#8B7355" }}>
-                      ₦{txn.amount.toLocaleString()} · {isFare ? "Connect Card" : txn.paymentMethod}
-                    </p>
-                  </div>
-                  <span className="flex-shrink-0" style={{
-                    fontFamily: "Space Mono, monospace", fontSize: "9px", color: "#8B7355" }}>
-                    {formatRelativeTime(txn.createdAt)}
-                  </span>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
         </div>
 
         {/* Club badge */}
-        <div className="flex justify-center mt-4 mb-2">
+        <div className="flex justify-center mt-5 mb-2">
           <span className="flex items-center gap-2 px-4 py-2 rounded-full text-xs"
             style={{ background: "rgba(26,107,60,0.08)",
               fontFamily: "Space Mono, monospace", fontSize: "8px",
               letterSpacing: "0.1em", textTransform: "uppercase", color: "#1A6B3C" }}>
             <span className="w-1.5 h-1.5 rounded-full animate-pulse"
               style={{ background: "#1A6B3C" }} />
-            Built by Morning Stack ICT Club · Ibeku High School
+            Morning Stack ICT Club · Ibeku High School
           </span>
         </div>
       </div>
