@@ -213,11 +213,19 @@ export default function TransportPage() {
                 Paid ₦{activeRide.fare.toLocaleString()}
               </p>
             </div>
-            <button onClick={handleGetOff} disabled={gettingOff}
-              className="px-3 py-2 rounded-lg text-xs font-bold flex-shrink-0"
-              style={{ background: "#E8941A", color: "#fff" }}>
-              {gettingOff ? "..." : "I'm Getting Off"}
-            </button>
+            <div className="flex gap-2 flex-shrink-0">
+              <Link href={`/transport/incident?busId=${activeRide.busId}`}>
+                <button className="px-3 py-2 rounded-lg text-xs font-bold"
+                  style={{ background: "#C0392B", color: "#fff" }}>
+                  ⚠️
+                </button>
+              </Link>
+              <button onClick={handleGetOff} disabled={gettingOff}
+                className="px-3 py-2 rounded-lg text-xs font-bold"
+                style={{ background: "#E8941A", color: "#fff" }}>
+                {gettingOff ? "..." : "I'm Getting Off"}
+              </button>
+            </div>
           </div>
         </div>
       )}
