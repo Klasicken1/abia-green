@@ -2,8 +2,17 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import BottomNav from "@/components/BottomNav";
-import DriverRouteMap from "@/components/DriverRouteMap";
+
+const DriverRouteMap = dynamic(() => import("@/components/DriverRouteMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center" style={{ background: "#0F3D22" }}>
+      <span className="text-sm" style={{ color: "rgba(253,250,245,0.6)" }}>Loading map...</span>
+    </div>
+  ),
+});
 
 interface Bus {
   _id: string;

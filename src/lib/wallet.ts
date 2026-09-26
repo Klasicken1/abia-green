@@ -4,6 +4,7 @@ import { Transaction } from "@/lib/models/Transaction";
 import { Journey } from "@/lib/models/Journey";
 import { Bus } from "@/lib/models/Bus";
 import { ROUTES } from "@/lib/routesData";
+import { recordTelemetry } from "@/lib/telemetry";
 
 function generateReference(prefix: string): string {
   return `${prefix}-${Date.now().toString().slice(-8)}`;
@@ -103,6 +104,18 @@ export async function chargeFare(
     busId: bus._id.toString(),
     reference,
     balanceAfter: updatedUser.balance,
+  });
+
+  // A successful fare payment is a real boarding event — bump the driver's
+  // occupancy count through the same telemetry seam the manual count uses,
+  // so the driver's dashboard reflects QR-paying passengers too. Occupancy
+  // still has no hardware sensor, so this is tagged "manual" the same way
+  // the driver's own tap is — the distinction telemetry cares about is
+  // manual vs. device-reported, not which manual action triggered it.
+  await recordTelemetry({
+    busId: bus._id.toString(),
+    occupancy: bus.occupancy + 1,
+    source: "manual",
   });
 
   await Journey.create({
