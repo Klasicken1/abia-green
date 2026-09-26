@@ -4,6 +4,27 @@ import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
+import { ROUTES } from "@/lib/routesData";
+
+interface RecentTxn {
+  _id: string;
+  type: "topup" | "fare";
+  amount: number;
+  route: string | null;
+  paymentMethod: string;
+  createdAt: string;
+}
+
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -11,26 +32,45 @@ export default function Home() {
   const role = session?.user?.role;
   const firstName = session?.user?.name?.split(" ")[0] || "Welcome";
   const [balance, setBalance] = useState<number | null>(null);
+  const [recent, setRecent] = useState<RecentTxn[]>([]);
+  const [stats, setStats] = useState<{ ridesThisMonth: number; spentThisMonth: number } | null>(null);
+  const [liveBusCount, setLiveBusCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (role === "driver") {
       router.replace("/driver");
-    } else if (role === "admin") {
+    } else if (role === "admin" || role === "superadmin") {
       router.replace("/admin");
     }
   }, [role, router]);
 
   useEffect(() => {
-    if (session && role === "rider") {
+    if (session && role === "citizen") {
       fetch("/api/user/balance")
         .then(r => r.json())
         .then(data => setBalance(data.balance ?? 0))
         .catch(() => setBalance(null));
+
+      fetch("/api/wallet/recent")
+        .then(r => r.json())
+        .then(data => {
+          setRecent(Array.isArray(data.recent) ? data.recent : []);
+          setStats(data.stats ?? null);
+        })
+        .catch(() => {
+          setRecent([]);
+          setStats(null);
+        });
     }
+
+    fetch("/api/buses")
+      .then(r => r.json())
+      .then(data => setLiveBusCount(Array.isArray(data) ? data.length : null))
+      .catch(() => setLiveBusCount(null));
   }, [session, role]);
 
   // While auth is resolving, or while a driver/admin is about to be redirected
-  if (status === "loading" || role === "driver" || role === "admin") {
+  if (status === "loading" || role === "driver" || role === "admin" || role === "superadmin") {
     return (
       <main className="flex flex-col min-h-screen items-center justify-center"
         style={{ background: "#F7F3EC" }}>
@@ -177,7 +217,7 @@ export default function Home() {
                   Green Shuttle
                 </span>
                 <span className="text-xs" style={{ color: "rgba(253,250,245,0.5)" }}>
-                  4 routes · 20 buses live
+                  4 routes · {liveBusCount !== null ? `${liveBusCount} buses live` : "Live tracking"}
                 </span>
                 <div className="flex items-center justify-between mt-1">
                   <span className="flex items-center gap-1 px-2 py-0.5 rounded-full"
@@ -201,14 +241,9 @@ export default function Home() {
                   Environment
                 </span>
                 <span className="text-xs" style={{ color: "rgba(253,250,245,0.5)" }}>
-                  527 reports · ASEPA
+                  Report issues to ASEPA instantly
                 </span>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="px-2 py-0.5 rounded-full"
-                    style={{ background: "rgba(232,148,26,0.2)",
-                      fontFamily: "Space Mono, monospace", fontSize: "8px", color: "#E8941A" }}>
-                    4 pending
-                  </span>
+                <div className="flex items-center justify-end mt-1">
                   <span style={{ color: "rgba(253,250,245,0.3)", fontSize: "14px" }}>→</span>
                 </div>
               </div>
@@ -216,37 +251,44 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Stats row */}
-        <div className="rounded-xl p-4 mt-4"
-          style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.05)" }}>
-          <p className="flex items-center gap-2 mb-3" style={{
-            fontFamily: "Space Mono, monospace", fontSize: "9px",
-            letterSpacing: "0.14em", textTransform: "uppercase", color: "#C27A10" }}>
-            <span className="inline-block w-3.5 h-0.5" style={{ background: "#C27A10" }} />
-            Today&apos;s Activity
-          </p>
-          <div className="grid grid-cols-3 divide-x divide-gray-100">
-            {[
-              { val: "3,847", lbl: "Riders",   color: "#E8941A" },
-              { val: "87%",   lbl: "On Time",  color: "#1A6B3C" },
-              { val: "4.8t",  lbl: "CO₂ Saved",color: "#1A6B3C" },
-            ].map((s, i) => (
-              <div key={i} className="text-center px-2">
+        {/* Stats row — real, scoped to this citizen */}
+        {stats && (
+          <div className="rounded-xl p-4 mt-4"
+            style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.05)" }}>
+            <p className="flex items-center gap-2 mb-3" style={{
+              fontFamily: "Space Mono, monospace", fontSize: "9px",
+              letterSpacing: "0.14em", textTransform: "uppercase", color: "#C27A10" }}>
+              <span className="inline-block w-3.5 h-0.5" style={{ background: "#C27A10" }} />
+              Your Activity This Month
+            </p>
+            <div className="grid grid-cols-2 divide-x divide-gray-100">
+              <div className="text-center px-2">
                 <p className="text-xl leading-none"
-                  style={{ fontFamily: "DM Serif Display, serif", color: s.color }}>
-                  {s.val}
+                  style={{ fontFamily: "DM Serif Display, serif", color: "#E8941A" }}>
+                  {stats.ridesThisMonth}
                 </p>
                 <p className="mt-1" style={{ fontFamily: "Space Mono, monospace",
                   fontSize: "8px", letterSpacing: "0.08em",
                   textTransform: "uppercase", color: "#8B7355" }}>
-                  {s.lbl}
+                  Rides
                 </p>
               </div>
-            ))}
+              <div className="text-center px-2">
+                <p className="text-xl leading-none"
+                  style={{ fontFamily: "DM Serif Display, serif", color: "#1A6B3C" }}>
+                  ₦{stats.spentThisMonth.toLocaleString()}
+                </p>
+                <p className="mt-1" style={{ fontFamily: "Space Mono, monospace",
+                  fontSize: "8px", letterSpacing: "0.08em",
+                  textTransform: "uppercase", color: "#8B7355" }}>
+                  Spent
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Recent Activity */}
+        {/* Recent Activity — real Transaction history */}
         <div className="mt-4">
           <p className="flex items-center gap-2 mb-3" style={{
             fontFamily: "Space Mono, monospace", fontSize: "9px",
@@ -254,37 +296,42 @@ export default function Home() {
             <span className="inline-block w-3.5 h-0.5" style={{ background: "#C27A10" }} />
             Recent
           </p>
-          {[
-            { icon: "🚌", bg: "rgba(26,107,60,0.1)",
-              title: "Rode BUS-04 · Umuahia → Aba",
-              sub: "₦800 deducted · Connect Card", time: "2h ago" },
-            { icon: "📍", bg: "rgba(232,148,26,0.1)",
-              title: "Report submitted · AG-481923",
-              sub: "Illegal dump · Isigate Junction", time: "1d ago" },
-            { icon: "💳", bg: "rgba(26,107,60,0.1)",
-              title: "Card topped up · ₦3,000",
-              sub: "Via Paystack · Balance: ₦2,450", time: "2d ago" },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-3 py-3"
-              style={{ borderBottom: i < 2 ? "1px solid rgba(26,18,8,0.06)" : "none" }}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-                style={{ background: item.bg }}>
-                {item.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold truncate" style={{ color: "#1A1208" }}>
-                  {item.title}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: "#8B7355" }}>
-                  {item.sub}
-                </p>
-              </div>
-              <span className="flex-shrink-0" style={{
-                fontFamily: "Space Mono, monospace", fontSize: "9px", color: "#8B7355" }}>
-                {item.time}
-              </span>
+          {recent.length === 0 ? (
+            <div className="rounded-xl p-4 text-center"
+              style={{ background: "#fff", boxShadow: "0 2px 8px rgba(26,18,8,0.05)" }}>
+              <p className="text-xs" style={{ color: "#8B7355" }}>
+                No activity yet — take your first ride or top up your card.
+              </p>
             </div>
-          ))}
+          ) : (
+            recent.map((txn, i) => {
+              const routeInfo = txn.route ? ROUTES[txn.route] : null;
+              const isFare = txn.type === "fare";
+              return (
+                <div key={txn._id} className="flex items-center gap-3 py-3"
+                  style={{ borderBottom: i < recent.length - 1 ? "1px solid rgba(26,18,8,0.06)" : "none" }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+                    style={{ background: isFare ? "rgba(26,107,60,0.1)" : "rgba(232,148,26,0.1)" }}>
+                    {isFare ? "🚌" : "💳"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate" style={{ color: "#1A1208" }}>
+                      {isFare
+                        ? `Fare paid${routeInfo ? ` · ${routeInfo.name}` : ""}`
+                        : "Card topped up"}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "#8B7355" }}>
+                      ₦{txn.amount.toLocaleString()} · {isFare ? "Connect Card" : txn.paymentMethod}
+                    </p>
+                  </div>
+                  <span className="flex-shrink-0" style={{
+                    fontFamily: "Space Mono, monospace", fontSize: "9px", color: "#8B7355" }}>
+                    {formatRelativeTime(txn.createdAt)}
+                  </span>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Club badge */}
@@ -295,7 +342,7 @@ export default function Home() {
               letterSpacing: "0.1em", textTransform: "uppercase", color: "#1A6B3C" }}>
             <span className="w-1.5 h-1.5 rounded-full animate-pulse"
               style={{ background: "#1A6B3C" }} />
-            Morning Stack ICT Club · Ibeku High School
+            Built by Morning Stack ICT Club · Ibeku High School
           </span>
         </div>
       </div>
