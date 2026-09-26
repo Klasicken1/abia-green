@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -34,6 +34,9 @@ const ROUTES = [
 
 const BUS_IDS = Array.from({ length: 10 }, (_, i) => `BUS-${String(i + 1).padStart(2, "0")}`);
 
+const SHEET_PEEK_VH = 22;
+const SHEET_FULL_VH = 66;
+
 export default function DriverPage() {
   const { data: session, status } = useSession();
   const role = session?.user?.role;
@@ -44,6 +47,10 @@ export default function DriverPage() {
   const [busIdInput, setBusIdInput] = useState(BUS_IDS[0]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Draggable bottom sheet state (mobile only — desktop panel ignores this)
+  const [sheetVh, setSheetVh] = useState(SHEET_FULL_VH);
+  const dragState = useRef<{ startY: number; startVh: number } | null>(null);
 
   useEffect(() => {
     if (session && role === "driver") {
@@ -155,6 +162,42 @@ export default function DriverPage() {
     }
   }
 
+  const onDragStart = useCallback((clientY: number) => {
+    dragState.current = { startY: clientY, startVh: sheetVh };
+  }, [sheetVh]);
+
+  const onDragMove = useCallback((clientY: number) => {
+    if (!dragState.current) return;
+    const deltaPx = dragState.current.startY - clientY;
+    const deltaVh = (deltaPx / window.innerHeight) * 100;
+    const next = Math.min(SHEET_FULL_VH, Math.max(SHEET_PEEK_VH, dragState.current.startVh + deltaVh));
+    setSheetVh(next);
+  }, []);
+
+  const onDragEnd = useCallback(() => {
+    if (!dragState.current) return;
+    const mid = (SHEET_PEEK_VH + SHEET_FULL_VH) / 2;
+    setSheetVh(prev => (prev > mid ? SHEET_FULL_VH : SHEET_PEEK_VH));
+    dragState.current = null;
+  }, []);
+
+  useEffect(() => {
+    function handleMouseMove(e: MouseEvent) { onDragMove(e.clientY); }
+    function handleTouchMove(e: TouchEvent) { onDragMove(e.touches[0].clientY); }
+    function handleUp() { onDragEnd(); }
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("touchmove", handleTouchMove);
+    window.addEventListener("mouseup", handleUp);
+    window.addEventListener("touchend", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("mouseup", handleUp);
+      window.removeEventListener("touchend", handleUp);
+    };
+  }, [onDragMove, onDragEnd]);
+
   if (status === "loading") {
     return (
       <main className="flex flex-col min-h-screen items-center justify-center"
@@ -215,11 +258,6 @@ export default function DriverPage() {
 
   const isOnRoute = bus?.status === "on_route";
 
-  // Full-screen, map-first cockpit — intentionally breaks out of the app's
-  // phone-frame shell so it fills the entire device: portrait phone,
-  // landscape phone, tablet, or desktop. A bottom sheet holds the controls
-  // on narrow screens; that same content becomes a fixed right-side panel
-  // once the screen is wide enough for a proper split layout.
   if (!busLoading && isOnRoute && bus) {
     return (
       <div className="fixed inset-0 z-40 overflow-hidden" style={{ background: "#0F3D22" }}>
@@ -227,27 +265,61 @@ export default function DriverPage() {
           <DriverRouteMap routeId={bus.route} progress={bus.progress} />
         </div>
 
-        <div className="absolute top-0 left-0 right-0 px-5 pt-12 pb-6 z-10"
-          style={{ background: "linear-gradient(180deg, rgba(15,61,34,0.92) 0%, rgba(15,61,34,0.55) 65%, transparent 100%)" }}>
-          <Link href="/" className="text-xs mb-2 inline-flex items-center gap-1"
-            style={{ color: "rgba(253,250,245,0.7)", fontFamily: "Space Mono, monospace" }}>
+        {/* Glass header */}
+        <div className="absolute top-0 left-0 right-0 px-5 pt-12 pb-8 z-10 pointer-events-none"
+          style={{ background: "linear-gradient(180deg, rgba(15,61,34,0.35) 0%, transparent 100%)" }}>
+          <Link href="/" className="text-xs mb-3 inline-flex items-center gap-1 pointer-events-auto"
+            style={{ color: "#fff", fontFamily: "Space Mono, monospace",
+              textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
             ← Back
           </Link>
-          <p style={{ fontFamily: "Space Mono, monospace", fontSize: "9px", letterSpacing: "0.12em",
-            textTransform: "uppercase", color: "rgba(232,148,26,0.9)" }}>
-            {bus.busId} · On Route
-          </p>
+          <div className="inline-block px-3 py-1.5 rounded-full pointer-events-auto"
+            style={{ background: "rgba(15,61,34,0.75)", backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.1)" }}>
+            <span style={{ fontFamily: "Space Mono, monospace", fontSize: "10px",
+              letterSpacing: "0.1em", textTransform: "uppercase", color: "#E8941A", fontWeight: 700 }}>
+              {bus.busId} · On Route
+            </span>
+          </div>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 max-h-[62vh] sm:max-h-none sm:h-full sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[380px] sm:inset-x-auto rounded-t-3xl sm:rounded-none overflow-y-auto z-10"
-          style={{ background: "#fff", boxShadow: "0 -8px 30px rgba(0,0,0,0.25)" }}>
-          <div className="p-5">
-            <div className="sm:hidden w-10 h-1.5 rounded-full mx-auto mb-4" style={{ background: "rgba(26,18,8,0.15)" }} />
+        {/* Bottom sheet (mobile: draggable, peek/full); desktop: fixed right panel */}
+        <div
+          className="absolute inset-x-0 bottom-0 sm:h-full sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[400px] sm:inset-x-auto rounded-t-3xl sm:rounded-none overflow-hidden z-10 flex flex-col"
+          style={{
+            height: `${sheetVh}vh`,
+            background: "rgba(255,255,255,0.94)",
+            backdropFilter: "blur(16px)",
+            boxShadow: "0 -8px 30px rgba(0,0,0,0.25)",
+            transition: dragState.current ? "none" : "height 0.25s ease",
+          }}
+        >
+          <div
+            className="sm:hidden pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing"
+            onMouseDown={e => onDragStart(e.clientY)}
+            onTouchStart={e => onDragStart(e.touches[0].clientY)}
+          >
+            <div className="w-10 h-1.5 rounded-full mx-auto" style={{ background: "rgba(26,18,8,0.2)" }} />
+          </div>
 
-            <p className="text-lg font-bold mb-0.5" style={{ color: "#1A1208" }}>{bus.routeLabel}</p>
-            <p className="text-xs mb-4" style={{ color: "#8B7355" }}>
-              ETA {bus.etaMinutes ?? 0} min · {bus.occupancy} passengers
-            </p>
+          <div className="flex-1 overflow-y-auto px-5 pb-5 sm:pt-6">
+            <h2 className="mb-3" style={{ fontFamily: "DM Serif Display, serif",
+              fontSize: "28px", lineHeight: 1.1, color: "#1A1208" }}>
+              {bus.routeLabel}
+            </h2>
+
+            <div className="flex gap-2 mb-5">
+              <div className="px-3 py-1.5 rounded-full" style={{ background: "rgba(232,148,26,0.12)" }}>
+                <span className="text-xs font-bold" style={{ color: "#C27A10" }}>
+                  ETA {bus.etaMinutes ?? 0} min
+                </span>
+              </div>
+              <div className="px-3 py-1.5 rounded-full" style={{ background: "rgba(26,107,60,0.1)" }}>
+                <span className="text-xs font-bold" style={{ color: "#1A6B3C" }}>
+                  {bus.occupancy} passenger{bus.occupancy === 1 ? "" : "s"}
+                </span>
+              </div>
+            </div>
 
             <p className="text-xs mb-2" style={{
               fontFamily: "Space Mono, monospace", fontSize: "9px",
@@ -260,11 +332,8 @@ export default function DriverPage() {
               max={100}
               value={bus.progress}
               onChange={e => updateProgress(Number(e.target.value))}
-              className="w-full mb-1"
+              className="trip-slider w-full mb-5"
             />
-            <div className="h-2 rounded-full mb-4" style={{ background: "rgba(26,18,8,0.08)" }}>
-              <div className="h-full rounded-full" style={{ width: `${bus.progress}%`, background: "#1A6B3C" }} />
-            </div>
 
             <Link href="/driver/route/qr">
               <button className="w-full py-3 rounded-xl text-sm font-bold mb-3"
@@ -298,7 +367,6 @@ export default function DriverPage() {
     );
   }
 
-  // Idle / start-trip / loading states use the normal app shell with bottom nav
   return (
     <main className="flex flex-col min-h-screen" style={{ background: "#F7F3EC" }}>
       <div className="px-5 pt-12 pb-5" style={{ background: "#0F3D22" }}>

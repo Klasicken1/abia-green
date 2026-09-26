@@ -42,6 +42,38 @@ const CITY_CENTERS: Record<string, [number, number]> = {
   "intra-umuahia": [7.4921, 5.5248],
 };
 
+function createBusMarkerElement(): HTMLDivElement {
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText = `
+    position: relative;
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+  `;
+
+  const ring = document.createElement("div");
+  ring.style.cssText = `
+    position: absolute;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: #1A6B3C;
+    animation: busPulse 2s ease-out infinite;
+  `;
+
+  const icon = document.createElement("div");
+  icon.style.cssText = `
+    position: relative;
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #0F3D22; border: 3px solid #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; box-shadow: 0 3px 12px rgba(0,0,0,0.35);
+  `;
+  icon.innerHTML = "🚌";
+
+  wrapper.appendChild(ring);
+  wrapper.appendChild(icon);
+  return wrapper;
+}
+
 export default function DriverRouteMap({ routeId, progress }: DriverRouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -96,14 +128,7 @@ export default function DriverRouteMap({ routeId, progress }: DriverRouteMapProp
         map.current.fitBounds(bounds, { padding: 60 });
       }
 
-      const el = document.createElement("div");
-      el.style.cssText = `
-        width: 40px; height: 40px; border-radius: 50%;
-        background: #0F3D22; border: 3px solid #fff;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 18px; box-shadow: 0 3px 12px rgba(0,0,0,0.35);
-      `;
-      el.innerHTML = "🚌";
+      const el = createBusMarkerElement();
 
       const startPos = routeInfo
         ? pointAtFraction(routeInfo.coordinates, progress / 100)
