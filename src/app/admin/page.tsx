@@ -32,6 +32,18 @@ interface Bus {
   updatedAt: string;
 }
 
+interface BusActivity {
+  bus: { busId: string; routeLabel: string; occupancy: number };
+  events: {
+    userEmailMasked: string;
+    amount: number;
+    paymentMethod: string;
+    boardedAt: string;
+    disembarkedAt: string | null;
+  }[];
+  methodBreakdown: { qr: number; nfc: number };
+}
+
 const TYPE_LABELS: Record<string, string> = {
   illegal_dump:    "Illegal Dump",
   erosion:         "Erosion",
@@ -82,6 +94,11 @@ export default function AdminPage() {
   const [buses, setBuses] = useState<Bus[]>([]);
   const [busesLoading, setBusesLoading] = useState(true);
   const [endingId, setEndingId] = useState<string | null>(null);
+
+  // Per-bus passenger activity panel: which bus is expanded, and cached
+  // activity data keyed by bus id (fetched once, on first expand).
+  const [expandedBusId, setExpandedBusId] = useState<string | null>(null);
+  const [busActivity, setBusActivity] = useState<Record<string, BusActivity>>({});
 
   useEffect(() => {
     const paramView = searchParams.get("view") === "transport" ? "transport" : "reports";
@@ -166,6 +183,23 @@ export default function AdminPage() {
       // silent
     }
     setEndingId(null);
+  }
+
+  async function toggleBusActivity(busId: string) {
+    if (expandedBusId === busId) {
+      setExpandedBusId(null);
+      return;
+    }
+    setExpandedBusId(busId);
+    if (!busActivity[busId]) {
+      try {
+        const res = await fetch(`/api/admin/buses/${busId}/activity`);
+        const data = await res.json();
+        setBusActivity(prev => ({ ...prev, [busId]: data }));
+      } catch {
+        // silent — panel shows "Loading..." indefinitely, acceptable failure mode
+      }
+    }
   }
 
   function isStale(bus: Bus) {
@@ -590,6 +624,9 @@ export default function AdminPage() {
             ) : (
               buses.map(bus => {
                 const stale = isStale(bus);
+                const isExpanded = expandedBusId === bus._id;
+                const activity = busActivity[bus._id];
+
                 return (
                   <div key={bus._id} className="rounded-xl overflow-hidden mb-3"
                     style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.06)",
@@ -634,6 +671,83 @@ export default function AdminPage() {
                         fontFamily: "Space Mono, monospace", fontSize: "9px" }}>
                         Last updated: {new Date(bus.updatedAt).toLocaleString("en-NG")}
                       </p>
+
+                      {bus.status === "on_route" && (
+                        <button onClick={() => toggleBusActivity(bus._id)}
+                          className="w-full py-2.5 rounded-xl text-xs font-bold mb-2"
+                          style={{ background: "rgba(26,107,60,0.08)", color: "#1A6B3C",
+                            border: "1px solid rgba(26,107,60,0.2)" }}>
+                          {isExpanded ? "Hide Passenger Activity ▲" : "View Passenger Activity ▼"}
+                        </button>
+                      )}
+
+                      {isExpanded && (
+                        <div className="rounded-xl p-3 mb-3" style={{ background: "#F7F3EC" }}>
+                          {!activity ? (
+                            <p className="text-xs text-center py-3" style={{ color: "#8B7355" }}>Loading...</p>
+                          ) : (
+                            <>
+                              <div className="flex gap-2 mb-3">
+                                <div className="flex-1 rounded-lg p-2 text-center" style={{ background: "#fff" }}>
+                                  <p className="text-lg font-bold" style={{ fontFamily: "DM Serif Display, serif", color: "#1A6B3C" }}>
+                                    {activity.methodBreakdown.qr}
+                                  </p>
+                                  <p style={{ fontFamily: "Space Mono, monospace", fontSize: "8px",
+                                    textTransform: "uppercase", color: "#8B7355" }}>
+                                    QR Scans
+                                  </p>
+                                </div>
+                                <div className="flex-1 rounded-lg p-2 text-center" style={{ background: "#fff" }}>
+                                  <p className="text-lg font-bold" style={{ fontFamily: "DM Serif Display, serif", color: "#8B7355" }}>
+                                    {activity.methodBreakdown.nfc}
+                                  </p>
+                                  <p style={{ fontFamily: "Space Mono, monospace", fontSize: "8px",
+                                    textTransform: "uppercase", color: "#8B7355" }}>
+                                    NFC Tap
+                                  </p>
+                                </div>
+                              </div>
+                              {activity.methodBreakdown.nfc === 0 && (
+                                <p className="text-xs mb-3" style={{ color: "#8B7355", fontStyle: "italic" }}>
+                                  NFC card readers aren&apos;t deployed yet — all payments today are via QR scan.
+                                </p>
+                              )}
+
+                              {activity.events.length === 0 ? (
+                                <p className="text-xs text-center py-2" style={{ color: "#8B7355" }}>
+                                  No passengers have paid on this trip yet.
+                                </p>
+                              ) : (
+                                activity.events.map((e, i) => (
+                                  <div key={i} className="flex items-center justify-between py-2"
+                                    style={{ borderBottom: i < activity.events.length - 1 ? "1px solid rgba(26,18,8,0.06)" : "none" }}>
+                                    <div>
+                                      <p className="text-xs font-semibold" style={{ color: "#1A1208" }}>
+                                        {e.userEmailMasked}
+                                      </p>
+                                      <p className="text-xs" style={{ color: "#8B7355" }}>
+                                        ₦{e.amount.toLocaleString()} · {e.paymentMethod.toUpperCase()}
+                                      </p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-xs" style={{ color: "#1A6B3C" }}>
+                                        Boarded {new Date(e.boardedAt).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}
+                                      </p>
+                                      {e.disembarkedAt ? (
+                                        <p className="text-xs" style={{ color: "#8B7355" }}>
+                                          Off {new Date(e.disembarkedAt).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}
+                                        </p>
+                                      ) : (
+                                        <p className="text-xs" style={{ color: "#E8941A" }}>Still onboard</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
 
                       {bus.status === "on_route" && (
                         <button onClick={() => forceEndTrip(bus._id)}

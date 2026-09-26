@@ -86,13 +86,12 @@ export default function ProfilePage() {
               {[
                 { icon: "💳", label: "My Connect Card",  href: "/transport" },
                 { icon: "🧭", label: "My Journeys",      href: "/journeys" },
-                { icon: "📋", label: "My Reports",       href: "/environment" },
-                { icon: "🗺️", label: "Track a Report",   href: "/environment" },
-                { icon: "🔔", label: "Notifications",    href: "#" },
-              ].map((item, i) => (
+                { icon: "🗺️", label: "Track a Report",   href: "/track" },
+                { icon: "🔔", label: "Notifications",    href: "/profile/notifications" },
+              ].map((item, i, arr) => (
                 <Link key={i} href={item.href}>
                   <div className="flex items-center gap-3 px-4 py-3.5"
-                    style={{ borderBottom: i < 4 ? "1px solid rgba(26,18,8,0.06)" : "none" }}>
+                    style={{ borderBottom: i < arr.length - 1 ? "1px solid rgba(26,18,8,0.06)" : "none" }}>
                     <span className="text-lg">{item.icon}</span>
                     <span className="text-sm font-medium flex-1" style={{ color: "#1A1208" }}>
                       {item.label}
@@ -139,12 +138,11 @@ export default function ProfilePage() {
               style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.05)" }}>
               {[
                 { icon: "💳", label: "My Connect Card" },
-                { icon: "📋", label: "My Reports" },
+                { icon: "🗺️", label: "Track a Report" },
                 { icon: "🔔", label: "Notifications" },
-                { icon: "🗺️", label: "My LGA" },
-              ].map((item, i) => (
+              ].map((item, i, arr) => (
                 <div key={i} className="flex items-center gap-3 px-4 py-3.5"
-                  style={{ borderBottom: i < 3 ? "1px solid rgba(26,18,8,0.06)" : "none",
+                  style={{ borderBottom: i < arr.length - 1 ? "1px solid rgba(26,18,8,0.06)" : "none",
                     opacity: 0.5 }}>
                   <span className="text-lg">{item.icon}</span>
                   <span className="text-sm font-medium flex-1" style={{ color: "#1A1208" }}>
