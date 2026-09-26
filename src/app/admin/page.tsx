@@ -44,6 +44,22 @@ interface BusActivity {
   methodBreakdown: { qr: number; nfc: number };
 }
 
+interface Incident {
+  _id: string;
+  reporterEmail: string;
+  reporterRole: string;
+  busId: string;
+  busLabel: string | null;
+  route: string | null;
+  category: string;
+  severity: string;
+  description: string;
+  status: string;
+  resolvedBy: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
 const TYPE_LABELS: Record<string, string> = {
   illegal_dump:    "Illegal Dump",
   erosion:         "Erosion",
@@ -70,6 +86,21 @@ const SEVERITY_COLORS: Record<string, string> = {
   critical: "#C0392B",
 };
 
+const INCIDENT_CATEGORY_LABELS: Record<string, string> = {
+  breakdown:          "Vehicle Breakdown",
+  accident:           "Accident",
+  safety_concern:     "Safety Concern",
+  driver_conduct:     "Driver Conduct",
+  passenger_conduct:  "Passenger Conduct",
+  other:              "Other",
+};
+
+const INCIDENT_STATUS_COLORS: Record<string, string> = {
+  pending:    "#E8941A",
+  in_review:  "#2471A3",
+  resolved:   "#1A6B3C",
+};
+
 const STALE_THRESHOLD_MINUTES = 15;
 const ADMIN_ROLES = ["admin", "superadmin"];
 
@@ -81,6 +112,9 @@ export default function AdminPage() {
 
   const initialView = searchParams.get("view") === "transport" ? "transport" : "reports";
   const [view, setView] = useState<"reports" | "transport">(initialView);
+
+  // Sub-mode inside Transport: buses (fleet oversight) or incidents (safety reports)
+  const [transportSubView, setTransportSubView] = useState<"buses" | "incidents">("buses");
 
   const [reports, setReports]   = useState<Report[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
@@ -100,6 +134,12 @@ export default function AdminPage() {
   const [expandedBusId, setExpandedBusId] = useState<string | null>(null);
   const [busActivity, setBusActivity] = useState<Record<string, BusActivity>>({});
 
+  // Incident management
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [incidentsLoading, setIncidentsLoading] = useState(true);
+  const [incidentFilter, setIncidentFilter] = useState("all");
+  const [updatingIncidentId, setUpdatingIncidentId] = useState<string | null>(null);
+
   useEffect(() => {
     const paramView = searchParams.get("view") === "transport" ? "transport" : "reports";
     setView(paramView);
@@ -109,6 +149,7 @@ export default function AdminPage() {
     if (session && isAdmin) {
       fetchReports();
       fetchBuses();
+      fetchIncidents();
     }
   }, [session, isAdmin]);
 
@@ -134,6 +175,18 @@ export default function AdminPage() {
       setBuses([]);
     }
     setBusesLoading(false);
+  }
+
+  async function fetchIncidents() {
+    setIncidentsLoading(true);
+    try {
+      const res = await fetch("/api/incidents");
+      const data = await res.json();
+      setIncidents(Array.isArray(data) ? data : []);
+    } catch {
+      setIncidents([]);
+    }
+    setIncidentsLoading(false);
   }
 
   async function updateStatus(id: string, newStatus: string, reason?: string) {
@@ -200,6 +253,21 @@ export default function AdminPage() {
         // silent — panel shows "Loading..." indefinitely, acceptable failure mode
       }
     }
+  }
+
+  async function updateIncidentStatus(id: string, newStatus: string) {
+    setUpdatingIncidentId(id);
+    try {
+      await fetch(`/api/incidents/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      await fetchIncidents();
+    } catch {
+      // silent
+    }
+    setUpdatingIncidentId(null);
   }
 
   function isStale(bus: Bus) {
@@ -289,6 +357,17 @@ export default function AdminPage() {
   const idleBuses = buses.filter(b => b.status === "idle");
   const staleCount = onRouteBuses.filter(isStale).length;
 
+  const filteredIncidents = incidentFilter === "all"
+    ? incidents
+    : incidents.filter(inc => inc.status === incidentFilter);
+
+  const incidentCounts = {
+    all:       incidents.length,
+    pending:   incidents.filter(inc => inc.status === "pending").length,
+    in_review: incidents.filter(inc => inc.status === "in_review").length,
+    resolved:  incidents.filter(inc => inc.status === "resolved").length,
+  };
+
   return (
     <main className="flex flex-col min-h-screen" style={{ background: "#F7F3EC" }}>
 
@@ -335,14 +414,50 @@ export default function AdminPage() {
               color: view === "transport" ? "#fff" : "rgba(255,255,255,0.6)",
             }}>
             🚌 Transport
-            {staleCount > 0 && (
+            {(staleCount > 0 || incidentCounts.pending > 0) && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-xs"
                 style={{ background: "#C0392B", color: "#fff", fontSize: "9px" }}>
-                {staleCount}
+                {staleCount + incidentCounts.pending}
               </span>
             )}
           </button>
         </div>
+
+        {/* Sub-switcher, only visible inside Transport */}
+        {view === "transport" && (
+          <div className="flex gap-2 mt-2">
+            <button onClick={() => setTransportSubView("buses")}
+              className="flex-1 py-1.5 rounded-lg text-xs font-semibold relative"
+              style={{
+                background: transportSubView === "buses" ? "rgba(255,255,255,0.18)" : "transparent",
+                color: transportSubView === "buses" ? "#fff" : "rgba(255,255,255,0.5)",
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}>
+              Buses
+              {staleCount > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs"
+                  style={{ background: "#C0392B", color: "#fff", fontSize: "8px" }}>
+                  {staleCount}
+                </span>
+              )}
+            </button>
+            <button onClick={() => setTransportSubView("incidents")}
+              className="flex-1 py-1.5 rounded-lg text-xs font-semibold relative"
+              style={{
+                background: transportSubView === "incidents" ? "rgba(255,255,255,0.18)" : "transparent",
+                color: transportSubView === "incidents" ? "#fff" : "rgba(255,255,255,0.5)",
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}>
+              ⚠️ Incidents
+              {incidentCounts.pending > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs"
+                  style={{ background: "#C0392B", color: "#fff", fontSize: "8px" }}>
+                  {incidentCounts.pending}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {view === "reports" ? (
@@ -571,7 +686,7 @@ export default function AdminPage() {
             )}
           </div>
         </>
-      ) : (
+      ) : transportSubView === "buses" ? (
         <>
           {/* Transport stats strip */}
           <div className="grid grid-cols-3 gap-0"
@@ -761,6 +876,164 @@ export default function AdminPage() {
                   </div>
                 );
               })
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Incidents stats strip */}
+          <div className="grid grid-cols-4 gap-0"
+            style={{ background: "#0F3D22", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            {[
+              { label: "Total",     count: incidentCounts.all,       color: "#fff"    },
+              { label: "Pending",   count: incidentCounts.pending,   color: "#E8941A" },
+              { label: "In Review", count: incidentCounts.in_review, color: "#2471A3" },
+              { label: "Resolved",  count: incidentCounts.resolved,  color: "#1A6B3C" },
+            ].map((s, i) => (
+              <div key={i} className="py-3 text-center"
+                style={{ borderRight: i < 3 ? "1px solid rgba(255,255,255,0.08)" : "none" }}>
+                <p className="text-xl font-bold"
+                  style={{ fontFamily: "DM Serif Display, serif", color: s.color }}>
+                  {s.count}
+                </p>
+                <p style={{ fontFamily: "Space Mono, monospace", fontSize: "8px",
+                  letterSpacing: "0.08em", textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.4)" }}>
+                  {s.label}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4">
+
+            {/* Filter chips */}
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+              {[
+                { key: "all",       label: "All"       },
+                { key: "pending",   label: "Pending"   },
+                { key: "in_review", label: "In Review" },
+                { key: "resolved",  label: "Resolved"  },
+              ].map(f => (
+                <button key={f.key} onClick={() => setIncidentFilter(f.key)}
+                  className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold"
+                  style={{
+                    background: incidentFilter === f.key ? "#1A6B3C" : "#fff",
+                    color: incidentFilter === f.key ? "#fff" : "#8B7355",
+                    fontFamily: "Space Mono, monospace", fontSize: "9px",
+                    border: incidentFilter === f.key ? "none" : "1px solid rgba(26,18,8,0.12)",
+                  }}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <button onClick={fetchIncidents}
+              className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-xl text-xs"
+              style={{ background: "rgba(26,107,60,0.08)", color: "#1A6B3C",
+                border: "1px solid rgba(26,107,60,0.2)",
+                fontFamily: "Space Mono, monospace" }}>
+              ↻ Refresh Incidents
+            </button>
+
+            {incidentsLoading ? (
+              <div className="text-center py-12">
+                <div className="text-3xl mb-3">⏳</div>
+                <p className="text-sm" style={{ color: "#8B7355" }}>Loading incidents...</p>
+              </div>
+            ) : filteredIncidents.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-3xl mb-3">⚠️</div>
+                <p className="text-sm font-semibold mb-1" style={{ color: "#1A1208" }}>
+                  No incidents found
+                </p>
+                <p className="text-xs" style={{ color: "#8B7355" }}>
+                  {incidentFilter === "all" ? "No incidents reported yet." : `No ${incidentFilter.replace("_", " ")} incidents.`}
+                </p>
+              </div>
+            ) : (
+              filteredIncidents.map(inc => (
+                <div key={inc._id} className="rounded-xl overflow-hidden mb-3"
+                  style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.06)",
+                    border: inc.status === "pending" ? "1.5px solid rgba(232,148,26,0.4)" : "none" }}>
+
+                  <div className="px-4 py-3 flex items-center justify-between"
+                    style={{ borderBottom: "1px solid rgba(26,18,8,0.06)" }}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span style={{ fontFamily: "Space Mono, monospace", fontSize: "11px",
+                        fontWeight: 700, color: "#1A6B3C" }}>
+                        {inc.busLabel || inc.busId}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-xs"
+                        style={{
+                          background: `${SEVERITY_COLORS[inc.severity]}15`,
+                          color: SEVERITY_COLORS[inc.severity],
+                          fontFamily: "Space Mono, monospace", fontSize: "8px",
+                          textTransform: "uppercase"
+                        }}>
+                        {inc.severity}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-xs capitalize"
+                        style={{ background: "rgba(139,115,85,0.12)", color: "#8B7355",
+                          fontFamily: "Space Mono, monospace", fontSize: "8px" }}>
+                        {inc.reporterRole}
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-xs capitalize"
+                      style={{
+                        background: `${INCIDENT_STATUS_COLORS[inc.status]}15`,
+                        color: INCIDENT_STATUS_COLORS[inc.status],
+                        fontFamily: "Space Mono, monospace", fontSize: "8px",
+                      }}>
+                      {inc.status.replace("_", " ")}
+                    </span>
+                  </div>
+
+                  <div className="px-4 py-3">
+                    <p className="text-sm font-semibold" style={{ color: "#1A1208" }}>
+                      {INCIDENT_CATEGORY_LABELS[inc.category] || inc.category}
+                    </p>
+                    <p className="text-xs mt-0.5 mb-2" style={{ color: "#8B7355" }}>
+                      Reported by {inc.reporterEmail} · {new Date(inc.createdAt).toLocaleString("en-NG", {
+                        day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+                      })}
+                    </p>
+
+                    {inc.description && (
+                      <p className="text-xs mb-3 line-clamp-3"
+                        style={{ color: "#8B7355", lineHeight: "1.5" }}>
+                        {inc.description}
+                      </p>
+                    )}
+
+                    {inc.status === "resolved" && inc.resolvedBy ? (
+                      <p className="text-xs" style={{ color: "#1A6B3C" }}>
+                        ✓ Resolved by {inc.resolvedBy}
+                      </p>
+                    ) : (
+                      <div className="flex gap-2 flex-wrap">
+                        {["pending", "in_review", "resolved"].map(s => (
+                          <button key={s}
+                            onClick={() => updateIncidentStatus(inc._id, s)}
+                            disabled={inc.status === s || updatingIncidentId === inc._id}
+                            className="px-2 py-1 rounded-lg text-xs capitalize"
+                            style={{
+                              background: inc.status === s
+                                ? `${INCIDENT_STATUS_COLORS[s]}20` : "rgba(26,18,8,0.04)",
+                              color: inc.status === s ? INCIDENT_STATUS_COLORS[s] : "#8B7355",
+                              border: inc.status === s
+                                ? `1px solid ${INCIDENT_STATUS_COLORS[s]}40` : "1px solid rgba(26,18,8,0.08)",
+                              fontFamily: "Space Mono, monospace", fontSize: "8px",
+                              cursor: inc.status === s ? "default" : "pointer",
+                            }}>
+                            {updatingIncidentId === inc._id ? "..." : s.replace("_", " ")}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </>
