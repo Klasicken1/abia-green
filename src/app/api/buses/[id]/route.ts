@@ -4,9 +4,6 @@ import { auth } from "@/lib/auth";
 import { Bus } from "@/lib/models/Bus";
 import { ROUTES } from "@/lib/routesData";
 
-// GET — used by the citizen QR-scan flow to look up a bus right after
-// scanning, before showing the fare-confirmation screen. Any signed-in
-// user can look up a bus (no fare is charged here, just a read).
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -61,7 +58,12 @@ export async function PATCH(
     const body = await req.json();
     const updates: Record<string, unknown> = { updatedAt: new Date() };
 
-    if (body.status !== undefined)     updates.status = body.status;
+    if (body.status !== undefined) {
+      updates.status = body.status;
+      // Ending a trip retires its tripId — a passenger who paid on this
+      // ride is done; the bus's next trip gets a fresh id and fresh slate.
+      if (body.status === "idle") updates.tripId = null;
+    }
     if (body.progress !== undefined)   updates.progress = body.progress;
     if (body.occupancy !== undefined)  updates.occupancy = body.occupancy;
     if (body.etaMinutes !== undefined) updates.etaMinutes = body.etaMinutes;

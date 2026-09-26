@@ -9,6 +9,10 @@ const BusSchema = new mongoose.Schema({
   progress:     { type: Number, default: 0 },
   occupancy:    { type: Number, default: 0 },
   etaMinutes:   { type: Number, default: null },
+  // A fresh id generated each time a trip starts. Lets a fare payment be
+  // tied to *this specific ride* — a passenger can't be charged twice on
+  // one trip, but can pay again next time they board the same bus later.
+  tripId:       { type: String, default: null },
   updatedAt:    { type: Date, default: Date.now },
 });
 

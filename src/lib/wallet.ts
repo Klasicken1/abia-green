@@ -63,6 +63,22 @@ export async function chargeFare(
   if (bus.status !== "on_route") {
     return { ok: false, error: "This bus is not currently on a trip" };
   }
+  if (!bus.tripId) {
+    return { ok: false, error: "This trip isn't ready for payments yet. Try again in a moment." };
+  }
+
+  // One payment per passenger per ride: if this user already has a fare
+  // Transaction logged for this exact tripId, they've already boarded and
+  // paid — reject a repeat scan instead of charging (and counting) them again.
+  const alreadyPaid = await Transaction.findOne({
+    userEmail,
+    busId: bus._id.toString(),
+    tripId: bus.tripId,
+    type: "fare",
+  });
+  if (alreadyPaid) {
+    return { ok: false, error: "You've already paid for this trip on this bus." };
+  }
 
   const routeInfo = ROUTES[bus.route];
   if (!routeInfo) {
@@ -102,16 +118,13 @@ export async function chargeFare(
     paymentMethod,
     route: bus.route,
     busId: bus._id.toString(),
+    tripId: bus.tripId,
     reference,
     balanceAfter: updatedUser.balance,
   });
 
   // A successful fare payment is a real boarding event — bump the driver's
-  // occupancy count through the same telemetry seam the manual count uses,
-  // so the driver's dashboard reflects QR-paying passengers too. Occupancy
-  // still has no hardware sensor, so this is tagged "manual" the same way
-  // the driver's own tap is — the distinction telemetry cares about is
-  // manual vs. device-reported, not which manual action triggered it.
+  // occupancy count through the same telemetry seam the manual count uses.
   await recordTelemetry({
     busId: bus._id.toString(),
     occupancy: bus.occupancy + 1,

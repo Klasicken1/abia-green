@@ -215,41 +215,118 @@ export default function DriverPage() {
 
   const isOnRoute = bus?.status === "on_route";
 
+  // Full-screen, map-first cockpit — intentionally breaks out of the app's
+  // phone-frame shell so it fills the entire device: portrait phone,
+  // landscape phone, tablet, or desktop. A bottom sheet holds the controls
+  // on narrow screens; that same content becomes a fixed right-side panel
+  // once the screen is wide enough for a proper split layout.
+  if (!busLoading && isOnRoute && bus) {
+    return (
+      <div className="fixed inset-0 z-40 overflow-hidden" style={{ background: "#0F3D22" }}>
+        <div className="absolute inset-0">
+          <DriverRouteMap routeId={bus.route} progress={bus.progress} />
+        </div>
+
+        <div className="absolute top-0 left-0 right-0 px-5 pt-12 pb-6 z-10"
+          style={{ background: "linear-gradient(180deg, rgba(15,61,34,0.92) 0%, rgba(15,61,34,0.55) 65%, transparent 100%)" }}>
+          <Link href="/" className="text-xs mb-2 inline-flex items-center gap-1"
+            style={{ color: "rgba(253,250,245,0.7)", fontFamily: "Space Mono, monospace" }}>
+            ← Back
+          </Link>
+          <p style={{ fontFamily: "Space Mono, monospace", fontSize: "9px", letterSpacing: "0.12em",
+            textTransform: "uppercase", color: "rgba(232,148,26,0.9)" }}>
+            {bus.busId} · On Route
+          </p>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 max-h-[62vh] sm:max-h-none sm:h-full sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[380px] sm:inset-x-auto rounded-t-3xl sm:rounded-none overflow-y-auto z-10"
+          style={{ background: "#fff", boxShadow: "0 -8px 30px rgba(0,0,0,0.25)" }}>
+          <div className="p-5">
+            <div className="sm:hidden w-10 h-1.5 rounded-full mx-auto mb-4" style={{ background: "rgba(26,18,8,0.15)" }} />
+
+            <p className="text-lg font-bold mb-0.5" style={{ color: "#1A1208" }}>{bus.routeLabel}</p>
+            <p className="text-xs mb-4" style={{ color: "#8B7355" }}>
+              ETA {bus.etaMinutes ?? 0} min · {bus.occupancy} passengers
+            </p>
+
+            <p className="text-xs mb-2" style={{
+              fontFamily: "Space Mono, monospace", fontSize: "9px",
+              letterSpacing: "0.08em", textTransform: "uppercase", color: "#8B7355" }}>
+              Trip Progress · {bus.progress}%
+            </p>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={bus.progress}
+              onChange={e => updateProgress(Number(e.target.value))}
+              className="w-full mb-1"
+            />
+            <div className="h-2 rounded-full mb-4" style={{ background: "rgba(26,18,8,0.08)" }}>
+              <div className="h-full rounded-full" style={{ width: `${bus.progress}%`, background: "#1A6B3C" }} />
+            </div>
+
+            <Link href="/driver/route/qr">
+              <button className="w-full py-3 rounded-xl text-sm font-bold mb-3"
+                style={{ background: "#E8941A", color: "#fff" }}>
+                📱 Show Boarding QR
+              </button>
+            </Link>
+
+            <button onClick={markBoarded}
+              className="w-full py-3 rounded-xl text-sm font-bold mb-1"
+              style={{ background: "rgba(26,18,8,0.06)", color: "#1A1208" }}>
+              + Passenger Boarded (Manual Count)
+            </button>
+            <p className="text-xs mb-3" style={{ color: "#8B7355" }}>
+              Manual count fallback — most passengers pay via QR scan above.
+            </p>
+
+            {error && (
+              <p className="text-xs mb-2" style={{ color: "#C0392B" }}>{error}</p>
+            )}
+
+            <button onClick={endTrip} disabled={saving}
+              className="w-full py-3 rounded-xl text-sm font-bold mb-2"
+              style={{ background: "transparent", color: "#C0392B",
+                border: "1.5px solid rgba(192,57,43,0.2)" }}>
+              {saving ? "Ending..." : "End Trip"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Idle / start-trip / loading states use the normal app shell with bottom nav
   return (
-    <main
-      className="flex flex-col min-h-screen sm:fixed sm:inset-0 sm:h-screen sm:w-screen sm:overflow-hidden sm:z-40"
-      style={{ background: "#F7F3EC" }}
-    >
-      <div className="px-5 pt-12 pb-5 sm:pt-6 sm:pb-4" style={{ background: "#0F3D22" }}>
-        <Link href="/" className="text-xs mb-3 sm:mb-1 flex items-center gap-1"
+    <main className="flex flex-col min-h-screen" style={{ background: "#F7F3EC" }}>
+      <div className="px-5 pt-12 pb-5" style={{ background: "#0F3D22" }}>
+        <Link href="/" className="text-xs mb-3 flex items-center gap-1"
           style={{ color: "rgba(253,250,245,0.5)", fontFamily: "Space Mono, monospace" }}>
           ← Back
         </Link>
-        <div className="sm:flex sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs mb-1" style={{
-              fontFamily: "Space Mono, monospace", letterSpacing: "0.12em",
-              textTransform: "uppercase", color: "rgba(232,148,26,0.8)" }}>
-              Driver Dashboard
-            </p>
-            <h1 className="text-2xl text-white" style={{ fontFamily: "DM Serif Display, serif" }}>
-              {session.user?.name?.split(" ")[0] || "Driver"}
-            </h1>
-          </div>
-          <p className="text-xs mt-1 sm:mt-0" style={{ color: "rgba(253,250,245,0.45)" }}>
-            {busLoading ? "Checking your status..." : isOnRoute ? `On Route · ${bus?.routeLabel}` : "Idle"}
-          </p>
-        </div>
+        <p className="text-xs mb-1" style={{
+          fontFamily: "Space Mono, monospace", letterSpacing: "0.12em",
+          textTransform: "uppercase", color: "rgba(232,148,26,0.8)" }}>
+          Driver Dashboard
+        </p>
+        <h1 className="text-2xl text-white" style={{ fontFamily: "DM Serif Display, serif" }}>
+          {session.user?.name?.split(" ")[0] || "Driver"}
+        </h1>
+        <p className="text-xs mt-1" style={{ color: "rgba(253,250,245,0.45)" }}>
+          {busLoading ? "Checking your status..." : "Idle"}
+        </p>
       </div>
 
-      {busLoading ? (
-        <div className="text-center py-12">
-          <div className="text-3xl mb-3">⏳</div>
-          <p className="text-sm" style={{ color: "#8B7355" }}>Checking your trip status...</p>
-        </div>
-      ) : !isOnRoute ? (
-        <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4 sm:pb-4 sm:flex sm:items-center sm:justify-center">
-          <div className="rounded-xl p-4 mb-4 sm:mb-0 sm:max-w-md sm:w-full sm:p-8"
+      <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4">
+        {busLoading ? (
+          <div className="text-center py-12">
+            <div className="text-3xl mb-3">⏳</div>
+            <p className="text-sm" style={{ color: "#8B7355" }}>Checking your trip status...</p>
+          </div>
+        ) : (
+          <div className="rounded-xl p-4 mb-4"
             style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.05)" }}>
             <p className="text-xs mb-1" style={{
               fontFamily: "Space Mono, monospace", fontSize: "9px",
@@ -257,7 +334,7 @@ export default function DriverPage() {
               Bus ID
             </p>
             <select value={busIdInput} onChange={e => setBusIdInput(e.target.value)}
-              className="w-full p-2.5 sm:p-4 sm:text-base rounded-lg text-sm mb-3"
+              className="w-full p-2.5 rounded-lg text-sm mb-3"
               style={{ border: "1px solid rgba(26,18,8,0.1)", outline: "none" }}>
               {BUS_IDS.map(id => (
                 <option key={id} value={id}>{id}</option>
@@ -270,7 +347,7 @@ export default function DriverPage() {
               Route
             </p>
             <select value={selectedRoute} onChange={e => setSelectedRoute(e.target.value)}
-              className="w-full p-2.5 sm:p-4 sm:text-base rounded-lg text-sm mb-4"
+              className="w-full p-2.5 rounded-lg text-sm mb-4"
               style={{ border: "1px solid rgba(26,18,8,0.1)", outline: "none" }}>
               {ROUTES.map(r => (
                 <option key={r.value} value={r.value}>{r.label}</option>
@@ -282,92 +359,15 @@ export default function DriverPage() {
             )}
 
             <button onClick={startTrip} disabled={saving}
-              className="w-full py-3.5 sm:py-5 sm:text-base rounded-xl text-sm font-bold"
+              className="w-full py-3.5 rounded-xl text-sm font-bold"
               style={{ background: saving ? "rgba(26,107,60,0.5)" : "#1A6B3C", color: "#fff" }}>
               {saving ? "Starting..." : "Start Trip →"}
             </button>
           </div>
-        </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4 sm:overflow-hidden sm:pb-0 sm:px-0 sm:pt-0 sm:flex sm:flex-row sm:min-h-0">
-
-          {/* Map — shows from landscape-phone width upward */}
-          <div className="hidden sm:block sm:w-2/3 sm:h-full">
-            <DriverRouteMap routeId={bus!.route} progress={bus!.progress} />
-          </div>
-
-          {/* Controls */}
-          <div className="sm:w-1/3 sm:h-full sm:overflow-y-auto sm:bg-white sm:p-6">
-            <div className="rounded-xl overflow-hidden mb-4 sm:mb-6 sm:shadow-none"
-              style={{ background: "#fff", boxShadow: "0 4px 20px rgba(26,18,8,0.08)" }}>
-              <div className="p-4 sm:p-5 sm:rounded-xl" style={{ background: "#1A6B3C" }}>
-                <p style={{ fontFamily: "Space Mono, monospace", fontSize: "9px",
-                  letterSpacing: "0.1em", textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.6)", marginBottom: "4px" }}>
-                  {bus?.busId} · On Route
-                </p>
-                <p className="text-xl sm:text-2xl font-bold text-white">
-                  {bus?.routeLabel}
-                </p>
-                <p className="text-xs sm:text-sm mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
-                  ETA {bus?.etaMinutes ?? 0} min · {bus?.occupancy ?? 0} passengers
-                </p>
-              </div>
-
-              <div className="p-4 sm:p-5 sm:pt-6">
-                <p className="text-xs sm:text-sm mb-2" style={{
-                  fontFamily: "Space Mono, monospace", fontSize: "9px",
-                  letterSpacing: "0.08em", textTransform: "uppercase", color: "#8B7355" }}>
-                  Trip Progress · {bus?.progress ?? 0}%
-                </p>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={bus?.progress ?? 0}
-                  onChange={e => updateProgress(Number(e.target.value))}
-                  className="w-full mb-1 sm:h-3"
-                />
-                <div className="h-2 sm:h-3 rounded-full mb-4 sm:mb-6" style={{ background: "rgba(26,18,8,0.08)" }}>
-                  <div className="h-full rounded-full"
-                    style={{ width: `${bus?.progress ?? 0}%`, background: "#1A6B3C" }} />
-                </div>
-
-                <Link href="/driver/route/qr">
-                  <button className="w-full py-3 sm:py-5 sm:text-base rounded-xl text-sm font-bold mb-3"
-                    style={{ background: "#E8941A", color: "#fff" }}>
-                    📱 Show Boarding QR
-                  </button>
-                </Link>
-
-                <button onClick={markBoarded}
-                  className="w-full py-3 sm:py-5 sm:text-base rounded-xl text-sm font-bold mb-1"
-                  style={{ background: "rgba(26,18,8,0.06)", color: "#1A1208" }}>
-                  + Passenger Boarded (Manual Count)
-                </button>
-                <p className="text-xs mb-3 sm:mb-5" style={{ color: "#8B7355" }}>
-                  Manual count fallback — most passengers pay via QR scan above.
-                </p>
-
-                {error && (
-                  <p className="text-xs mb-2" style={{ color: "#C0392B" }}>{error}</p>
-                )}
-
-                <button onClick={endTrip} disabled={saving}
-                  className="w-full py-3 sm:py-5 sm:text-base rounded-xl text-sm font-bold"
-                  style={{ background: "transparent", color: "#C0392B",
-                    border: "1.5px solid rgba(192,57,43,0.2)" }}>
-                  {saving ? "Ending..." : "End Trip"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="sm:hidden">
-        <BottomNav />
+        )}
       </div>
+
+      <BottomNav />
     </main>
   );
 }

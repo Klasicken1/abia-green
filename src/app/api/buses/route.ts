@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import mongoose from "mongoose";
+import { randomUUID } from "crypto";
+import { connectDB } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { Bus } from "@/lib/models/Bus";
-
-const MONGODB_URI = process.env.MONGODB_URI!;
-let isConnected = false;
-
-async function connectDB() {
-  if (isConnected) return;
-  await mongoose.connect(MONGODB_URI);
-  isConnected = true;
-}
 
 // GET — public list of all buses currently on_route (for riders)
 export async function GET() {
@@ -44,6 +36,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // A fresh trip start gets a brand-new tripId, so fare payments can be
+    // tied to this specific ride — see chargeFare() in wallet.ts.
+    const isStartingTrip = status === "on_route";
+
     const bus = await Bus.findOneAndUpdate(
       { driverEmail: session.user.email },
       {
@@ -55,6 +51,7 @@ export async function POST(req: NextRequest) {
         progress: progress ?? 0,
         occupancy: occupancy ?? 0,
         etaMinutes: etaMinutes ?? null,
+        ...(isStartingTrip ? { tripId: randomUUID() } : {}),
         updatedAt: new Date(),
       },
       { upsert: true, new: true }
