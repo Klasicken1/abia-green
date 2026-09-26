@@ -142,9 +142,18 @@ export default function DriverRoutePage() {
 
             {/* Boarding QR */}
             <Link href="/driver/route/qr">
-              <button className="w-full py-3 rounded-xl text-sm font-bold mb-4"
+              <button className="w-full py-3 rounded-xl text-sm font-bold mb-2"
                 style={{ background: "#E8941A", color: "#fff" }}>
                 📱 Show Boarding QR
+              </button>
+            </Link>
+
+            {/* Report an Incident */}
+            <Link href="/driver/incident">
+              <button className="w-full py-3 rounded-xl text-sm font-bold mb-4"
+                style={{ background: "transparent", color: "#C0392B",
+                  border: "1.5px solid rgba(192,57,43,0.25)" }}>
+                ⚠️ Report an Incident
               </button>
             </Link>
 
