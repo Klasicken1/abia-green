@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { Bus } from "@/lib/models/Bus";
 import { ROUTES } from "@/lib/routesData";
+import { parseNairaFare, calculateBoardingFare } from "@/lib/fare";
 
 export async function GET(
   _req: NextRequest,
@@ -22,13 +23,16 @@ export async function GET(
     }
 
     const routeInfo = ROUTES[bus.route];
+    const fullFare = routeInfo ? parseNairaFare(routeInfo.fare) : 0;
+    const currentFare = fullFare ? calculateBoardingFare(fullFare, bus.progress) : null;
+
     return NextResponse.json({
       _id: bus._id,
       busId: bus.busId,
       route: bus.route,
       routeLabel: bus.routeLabel,
       status: bus.status,
-      fare: routeInfo?.fare ?? null,
+      fare: currentFare !== null ? `₦${currentFare.toLocaleString()}` : null,
     });
   } catch (err) {
     console.error("GET /api/buses/[id] failed:", err);
@@ -60,8 +64,6 @@ export async function PATCH(
 
     if (body.status !== undefined) {
       updates.status = body.status;
-      // Ending a trip retires its tripId — a passenger who paid on this
-      // ride is done; the bus's next trip gets a fresh id and fresh slate.
       if (body.status === "idle") updates.tripId = null;
     }
     if (body.progress !== undefined)   updates.progress = body.progress;

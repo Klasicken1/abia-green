@@ -268,11 +268,7 @@ export default function DriverPage() {
         {/* Glass header */}
         <div className="absolute top-0 left-0 right-0 px-5 pt-12 pb-8 z-10 pointer-events-none"
           style={{ background: "linear-gradient(180deg, rgba(15,61,34,0.35) 0%, transparent 100%)" }}>
-          <Link href="/" className="text-xs mb-3 inline-flex items-center gap-1 pointer-events-auto"
-            style={{ color: "#fff", fontFamily: "Space Mono, monospace",
-              textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
-            ← Back
-          </Link>
+          
           <div className="inline-block px-3 py-1.5 rounded-full pointer-events-auto"
             style={{ background: "rgba(15,61,34,0.75)", backdropFilter: "blur(8px)",
               border: "1px solid rgba(255,255,255,0.1)" }}>

@@ -5,16 +5,12 @@ import { Journey } from "@/lib/models/Journey";
 import { Bus } from "@/lib/models/Bus";
 import { ROUTES } from "@/lib/routesData";
 import { recordTelemetry } from "@/lib/telemetry";
+import { parseNairaFare, calculateBoardingFare } from "@/lib/fare";
 
 function generateReference(prefix: string): string {
   return `${prefix}-${Date.now().toString().slice(-8)}`;
 }
 
-/**
- * Adds funds to a user's balance and logs the transaction. Every top-up —
- * Paystack today, any future provider — should go through this, not touch
- * User.balance directly, so the Transaction log stays complete.
- */
 export async function topUp(userEmail: string, amount: number, paymentMethod: "card" = "card") {
   await connectDB();
 
@@ -41,14 +37,6 @@ export type FareChargeResult =
   | { ok: true; balance: number; reference: string; fare: number }
   | { ok: false; error: string };
 
-/**
- * Charges the fare for a specific bus a citizen is boarding, identified by
- * scanning that bus's QR code (or, later, tapping an NFC reader). This is
- * the one path any boarding-payment method writes through — the QR scan
- * page calls it with paymentMethod: "qr"; a future NFC reader calls the
- * exact same function with paymentMethod: "nfc". Neither the fare logic,
- * the balance check, nor the Journey/Transaction logging changes either way.
- */
 export async function chargeFare(
   userEmail: string,
   busId: string,
@@ -67,9 +55,6 @@ export async function chargeFare(
     return { ok: false, error: "This trip isn't ready for payments yet. Try again in a moment." };
   }
 
-  // One payment per passenger per ride: if this user already has a fare
-  // Transaction logged for this exact tripId, they've already boarded and
-  // paid — reject a repeat scan instead of charging (and counting) them again.
   const alreadyPaid = await Transaction.findOne({
     userEmail,
     busId: bus._id.toString(),
@@ -85,20 +70,20 @@ export async function chargeFare(
     return { ok: false, error: "Route information unavailable" };
   }
 
-  // Parse "₦800" -> 800
-  const fare = parseInt(routeInfo.fare.replace(/[^\d]/g, ""), 10);
-  if (!fare) {
+  const fullFare = parseNairaFare(routeInfo.fare);
+  if (!fullFare) {
     return { ok: false, error: "Could not determine fare for this route" };
   }
+
+  // Prorated by how far along the bus already is when this passenger boards —
+  // full fare from the start, less if they're joining partway.
+  const fare = calculateBoardingFare(fullFare, bus.progress);
 
   const user = await User.findOne({ email: userEmail });
   if (!user || user.balance < fare) {
     return { ok: false, error: "Insufficient Connect Card balance" };
   }
 
-  // Atomic guard: only debit if balance is still sufficient at write time
-  // (protects against a double-scan race — two rapid charges on the same
-  // low balance can't both succeed).
   const updatedUser = await User.findOneAndUpdate(
     { email: userEmail, balance: { $gte: fare } },
     { $inc: { balance: -fare } },
@@ -123,8 +108,6 @@ export async function chargeFare(
     balanceAfter: updatedUser.balance,
   });
 
-  // A successful fare payment is a real boarding event — bump the driver's
-  // occupancy count through the same telemetry seam the manual count uses.
   await recordTelemetry({
     busId: bus._id.toString(),
     occupancy: bus.occupancy + 1,
@@ -142,4 +125,44 @@ export async function chargeFare(
   });
 
   return { ok: true, balance: updatedUser.balance, reference, fare };
+}
+
+export type DisembarkResult =
+  | { ok: true; occupancy: number }
+  | { ok: false; error: string };
+
+// A passenger self-reports getting off — the only realistic mechanism
+// without seat sensors or geofencing. Tied to their own unclosed fare
+// Transaction for this exact trip, so it can't be spoofed or double-tapped.
+export async function disembark(userEmail: string, busId: string): Promise<DisembarkResult> {
+  await connectDB();
+
+  const bus = await Bus.findById(busId);
+  if (!bus || !bus.tripId) {
+    return { ok: false, error: "This trip is no longer active." };
+  }
+
+  const txn = await Transaction.findOne({
+    userEmail,
+    busId: bus._id.toString(),
+    tripId: bus.tripId,
+    type: "fare",
+    disembarkedAt: null,
+  });
+
+  if (!txn) {
+    return { ok: false, error: "No active ride found for you on this bus." };
+  }
+
+  txn.disembarkedAt = new Date();
+  await txn.save();
+
+  const newOccupancy = Math.max(0, bus.occupancy - 1);
+  const updated = await recordTelemetry({
+    busId: bus._id.toString(),
+    occupancy: newOccupancy,
+    source: "manual",
+  });
+
+  return { ok: true, occupancy: updated?.occupancy ?? newOccupancy };
 }
