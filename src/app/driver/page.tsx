@@ -268,7 +268,6 @@ export default function DriverPage() {
         {/* Glass header */}
         <div className="absolute top-0 left-0 right-0 px-5 pt-12 pb-8 z-10 pointer-events-none"
           style={{ background: "linear-gradient(180deg, rgba(15,61,34,0.35) 0%, transparent 100%)" }}>
-          
           <div className="inline-block px-3 py-1.5 rounded-full pointer-events-auto"
             style={{ background: "rgba(15,61,34,0.75)", backdropFilter: "blur(8px)",
               border: "1px solid rgba(255,255,255,0.1)" }}>
@@ -332,9 +331,17 @@ export default function DriverPage() {
             />
 
             <Link href="/driver/route/qr">
-              <button className="w-full py-3 rounded-xl text-sm font-bold mb-3"
+              <button className="w-full py-3 rounded-xl text-sm font-bold mb-2"
                 style={{ background: "#E8941A", color: "#fff" }}>
                 📱 Show Boarding QR
+              </button>
+            </Link>
+
+            <Link href="/driver/incident">
+              <button className="w-full py-3 rounded-xl text-sm font-bold mb-3"
+                style={{ background: "transparent", color: "#C0392B",
+                  border: "1.5px solid rgba(192,57,43,0.3)" }}>
+                ⚠️ Report an Incident
               </button>
             </Link>
 
