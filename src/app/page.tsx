@@ -194,43 +194,49 @@ export default function Home() {
           {firstName} 👋
         </h1>
 
-        {/* Connect Card — bright, vibrant treatment */}
+        {/* Connect Card — dark premium surface, gold accent, metallic sheen */}
         <div className="rounded-2xl p-5 flex items-center justify-between relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg, #F2B705 0%, #E8941A 55%, #C27A10 100%)",
-            boxShadow: "0 10px 32px rgba(232,148,26,0.35)" }}>
+          style={{ background: "linear-gradient(135deg, #1C1108 0%, #0F3D22 55%, #1A1208 100%)",
+            border: "1px solid rgba(232,148,26,0.25)",
+            boxShadow: "0 12px 36px rgba(0,0,0,0.4)" }}>
+          {/* Diagonal gold sheen — the signature "premium card" glint */}
           <div className="absolute inset-0" style={{
-            background: "radial-gradient(circle at 80% 0%, rgba(255,255,255,0.25), transparent 60%)" }} />
+            background: "linear-gradient(115deg, transparent 40%, rgba(232,148,26,0.14) 50%, transparent 60%)" }} />
+          <div className="absolute inset-0" style={{
+            background: "radial-gradient(circle at 85% 100%, rgba(232,148,26,0.15), transparent 55%)" }} />
+
           <div className="relative">
             <p className="mb-1.5" style={{ fontFamily: "Space Mono, monospace",
-              fontSize: "9px", letterSpacing: "0.12em", textTransform: "uppercase",
-              color: "rgba(26,18,8,0.6)" }}>
+              fontSize: "9px", letterSpacing: "0.14em", textTransform: "uppercase",
+              color: "rgba(232,148,26,0.75)" }}>
               Connect Card Balance
             </p>
-            <p className="text-4xl leading-none"
-              style={{ fontFamily: "DM Serif Display, serif", color: "#1A1208" }}>
+            <p className="text-4xl leading-none balance-glow"
+              style={{ fontFamily: "DM Serif Display, serif", color: "#F2C94C" }}>
               {balance === null
                 ? "..."
-                : <>₦{balance.toLocaleString()}<span className="text-lg opacity-60">.00</span></>
+                : <>₦{balance.toLocaleString()}<span className="text-lg" style={{ color: "rgba(242,201,76,0.5)" }}>.00</span></>
               }
             </p>
             <div className="flex items-center gap-2 mt-3">
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                style={{ background: "rgba(26,18,8,0.15)",
-                  fontFamily: "Space Mono, monospace", fontSize: "8px", color: "#1A1208" }}>
+                style={{ background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(232,148,26,0.2)",
+                  fontFamily: "Space Mono, monospace", fontSize: "8px", color: "#90EE90" }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse"
-                  style={{ background: "#1A6B3C" }} />
+                  style={{ background: "#90EE90" }} />
                 Active
               </span>
               <span style={{ fontFamily: "Space Mono, monospace",
-                fontSize: "9px", color: "rgba(26,18,8,0.45)" }}>
+                fontSize: "9px", color: "rgba(253,250,245,0.35)" }}>
                 •••• 4821
               </span>
             </div>
           </div>
           <Link href="/transport/topup">
-            <div className="tile-lift w-11 h-8 rounded-lg flex items-center justify-center text-xs font-bold cursor-pointer relative"
-              style={{ background: "#1A1208", color: "#fff", fontSize: "9px",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.3)" }}>
+            <div className="tile-lift px-4 h-8 rounded-lg flex items-center justify-center text-xs font-bold cursor-pointer relative"
+              style={{ background: "linear-gradient(135deg, #F2C94C, #E8941A)", color: "#1A1208", fontSize: "9px",
+                boxShadow: "0 4px 14px rgba(232,148,26,0.4)" }}>
               TOP UP
             </div>
           </Link>
