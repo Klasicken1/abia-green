@@ -216,13 +216,16 @@ export default function DriverPage() {
   const isOnRoute = bus?.status === "on_route";
 
   return (
-    <main className="flex flex-col min-h-screen lg:h-screen lg:overflow-hidden" style={{ background: "#F7F3EC" }}>
-      <div className="px-5 pt-12 pb-5 lg:pt-6 lg:pb-4" style={{ background: "#0F3D22" }}>
-        <Link href="/" className="text-xs mb-3 lg:mb-1 flex items-center gap-1"
+    <main
+      className="flex flex-col min-h-screen sm:fixed sm:inset-0 sm:h-screen sm:w-screen sm:overflow-hidden sm:z-40"
+      style={{ background: "#F7F3EC" }}
+    >
+      <div className="px-5 pt-12 pb-5 sm:pt-6 sm:pb-4" style={{ background: "#0F3D22" }}>
+        <Link href="/" className="text-xs mb-3 sm:mb-1 flex items-center gap-1"
           style={{ color: "rgba(253,250,245,0.5)", fontFamily: "Space Mono, monospace" }}>
           ← Back
         </Link>
-        <div className="lg:flex lg:items-center lg:justify-between">
+        <div className="sm:flex sm:items-center sm:justify-between">
           <div>
             <p className="text-xs mb-1" style={{
               fontFamily: "Space Mono, monospace", letterSpacing: "0.12em",
@@ -233,7 +236,7 @@ export default function DriverPage() {
               {session.user?.name?.split(" ")[0] || "Driver"}
             </h1>
           </div>
-          <p className="text-xs mt-1 lg:mt-0" style={{ color: "rgba(253,250,245,0.45)" }}>
+          <p className="text-xs mt-1 sm:mt-0" style={{ color: "rgba(253,250,245,0.45)" }}>
             {busLoading ? "Checking your status..." : isOnRoute ? `On Route · ${bus?.routeLabel}` : "Idle"}
           </p>
         </div>
@@ -245,8 +248,8 @@ export default function DriverPage() {
           <p className="text-sm" style={{ color: "#8B7355" }}>Checking your trip status...</p>
         </div>
       ) : !isOnRoute ? (
-        <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4 lg:pb-4 lg:flex lg:items-center lg:justify-center">
-          <div className="rounded-xl p-4 mb-4 lg:mb-0 lg:max-w-md lg:w-full lg:p-8"
+        <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4 sm:pb-4 sm:flex sm:items-center sm:justify-center">
+          <div className="rounded-xl p-4 mb-4 sm:mb-0 sm:max-w-md sm:w-full sm:p-8"
             style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.05)" }}>
             <p className="text-xs mb-1" style={{
               fontFamily: "Space Mono, monospace", fontSize: "9px",
@@ -254,7 +257,7 @@ export default function DriverPage() {
               Bus ID
             </p>
             <select value={busIdInput} onChange={e => setBusIdInput(e.target.value)}
-              className="w-full p-2.5 lg:p-4 lg:text-base rounded-lg text-sm mb-3"
+              className="w-full p-2.5 sm:p-4 sm:text-base rounded-lg text-sm mb-3"
               style={{ border: "1px solid rgba(26,18,8,0.1)", outline: "none" }}>
               {BUS_IDS.map(id => (
                 <option key={id} value={id}>{id}</option>
@@ -267,7 +270,7 @@ export default function DriverPage() {
               Route
             </p>
             <select value={selectedRoute} onChange={e => setSelectedRoute(e.target.value)}
-              className="w-full p-2.5 lg:p-4 lg:text-base rounded-lg text-sm mb-4"
+              className="w-full p-2.5 sm:p-4 sm:text-base rounded-lg text-sm mb-4"
               style={{ border: "1px solid rgba(26,18,8,0.1)", outline: "none" }}>
               {ROUTES.map(r => (
                 <option key={r.value} value={r.value}>{r.label}</option>
@@ -279,40 +282,40 @@ export default function DriverPage() {
             )}
 
             <button onClick={startTrip} disabled={saving}
-              className="w-full py-3.5 lg:py-5 lg:text-base rounded-xl text-sm font-bold"
+              className="w-full py-3.5 sm:py-5 sm:text-base rounded-xl text-sm font-bold"
               style={{ background: saving ? "rgba(26,107,60,0.5)" : "#1A6B3C", color: "#fff" }}>
               {saving ? "Starting..." : "Start Trip →"}
             </button>
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4 lg:overflow-hidden lg:pb-0 lg:px-0 lg:pt-0 lg:flex lg:flex-row lg:min-h-0">
+        <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4 sm:overflow-hidden sm:pb-0 sm:px-0 sm:pt-0 sm:flex sm:flex-row sm:min-h-0">
 
-          {/* Map — tablet/landscape only */}
-          <div className="hidden lg:block lg:w-2/3 lg:h-full">
+          {/* Map — shows from landscape-phone width upward */}
+          <div className="hidden sm:block sm:w-2/3 sm:h-full">
             <DriverRouteMap routeId={bus!.route} progress={bus!.progress} />
           </div>
 
           {/* Controls */}
-          <div className="lg:w-1/3 lg:h-full lg:overflow-y-auto lg:bg-white lg:p-6">
-            <div className="rounded-xl overflow-hidden mb-4 lg:mb-6 lg:shadow-none"
+          <div className="sm:w-1/3 sm:h-full sm:overflow-y-auto sm:bg-white sm:p-6">
+            <div className="rounded-xl overflow-hidden mb-4 sm:mb-6 sm:shadow-none"
               style={{ background: "#fff", boxShadow: "0 4px 20px rgba(26,18,8,0.08)" }}>
-              <div className="p-4 lg:p-5 lg:rounded-xl" style={{ background: "#1A6B3C" }}>
+              <div className="p-4 sm:p-5 sm:rounded-xl" style={{ background: "#1A6B3C" }}>
                 <p style={{ fontFamily: "Space Mono, monospace", fontSize: "9px",
                   letterSpacing: "0.1em", textTransform: "uppercase",
                   color: "rgba(255,255,255,0.6)", marginBottom: "4px" }}>
                   {bus?.busId} · On Route
                 </p>
-                <p className="text-xl lg:text-2xl font-bold text-white">
+                <p className="text-xl sm:text-2xl font-bold text-white">
                   {bus?.routeLabel}
                 </p>
-                <p className="text-xs lg:text-sm mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
+                <p className="text-xs sm:text-sm mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
                   ETA {bus?.etaMinutes ?? 0} min · {bus?.occupancy ?? 0} passengers
                 </p>
               </div>
 
-              <div className="p-4 lg:p-5 lg:pt-6">
-                <p className="text-xs lg:text-sm mb-2" style={{
+              <div className="p-4 sm:p-5 sm:pt-6">
+                <p className="text-xs sm:text-sm mb-2" style={{
                   fontFamily: "Space Mono, monospace", fontSize: "9px",
                   letterSpacing: "0.08em", textTransform: "uppercase", color: "#8B7355" }}>
                   Trip Progress · {bus?.progress ?? 0}%
@@ -323,26 +326,26 @@ export default function DriverPage() {
                   max={100}
                   value={bus?.progress ?? 0}
                   onChange={e => updateProgress(Number(e.target.value))}
-                  className="w-full mb-1 lg:h-3"
+                  className="w-full mb-1 sm:h-3"
                 />
-                <div className="h-2 lg:h-3 rounded-full mb-4 lg:mb-6" style={{ background: "rgba(26,18,8,0.08)" }}>
+                <div className="h-2 sm:h-3 rounded-full mb-4 sm:mb-6" style={{ background: "rgba(26,18,8,0.08)" }}>
                   <div className="h-full rounded-full"
                     style={{ width: `${bus?.progress ?? 0}%`, background: "#1A6B3C" }} />
                 </div>
 
                 <Link href="/driver/route/qr">
-                  <button className="w-full py-3 lg:py-5 lg:text-base rounded-xl text-sm font-bold mb-3"
+                  <button className="w-full py-3 sm:py-5 sm:text-base rounded-xl text-sm font-bold mb-3"
                     style={{ background: "#E8941A", color: "#fff" }}>
                     📱 Show Boarding QR
                   </button>
                 </Link>
 
                 <button onClick={markBoarded}
-                  className="w-full py-3 lg:py-5 lg:text-base rounded-xl text-sm font-bold mb-1"
+                  className="w-full py-3 sm:py-5 sm:text-base rounded-xl text-sm font-bold mb-1"
                   style={{ background: "rgba(26,18,8,0.06)", color: "#1A1208" }}>
                   + Passenger Boarded (Manual Count)
                 </button>
-                <p className="text-xs mb-3 lg:mb-5" style={{ color: "#8B7355" }}>
+                <p className="text-xs mb-3 sm:mb-5" style={{ color: "#8B7355" }}>
                   Manual count fallback — most passengers pay via QR scan above.
                 </p>
 
@@ -351,7 +354,7 @@ export default function DriverPage() {
                 )}
 
                 <button onClick={endTrip} disabled={saving}
-                  className="w-full py-3 lg:py-5 lg:text-base rounded-xl text-sm font-bold"
+                  className="w-full py-3 sm:py-5 sm:text-base rounded-xl text-sm font-bold"
                   style={{ background: "transparent", color: "#C0392B",
                     border: "1.5px solid rgba(192,57,43,0.2)" }}>
                   {saving ? "Ending..." : "End Trip"}
@@ -362,7 +365,7 @@ export default function DriverPage() {
         </div>
       )}
 
-      <div className="lg:hidden">
+      <div className="sm:hidden">
         <BottomNav />
       </div>
     </main>
