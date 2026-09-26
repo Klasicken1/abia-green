@@ -69,6 +69,7 @@ export default function Home() {
   const [recent, setRecent] = useState<RecentTxn[]>([]);
   const [stats, setStats] = useState<{ ridesThisMonth: number; spentThisMonth: number } | null>(null);
   const [liveBusCount, setLiveBusCount] = useState<number | null>(null);
+  const [reportStats, setReportStats] = useState<{ total: number; resolved: number } | null>(null);
 
   useEffect(() => {
     if (role === "driver") {
@@ -101,9 +102,13 @@ export default function Home() {
       .then(r => r.json())
       .then(data => setLiveBusCount(Array.isArray(data) ? data.length : null))
       .catch(() => setLiveBusCount(null));
+
+    fetch("/api/reports/stats")
+      .then(r => r.json())
+      .then(data => setReportStats(data.total !== undefined ? data : null))
+      .catch(() => setReportStats(null));
   }, [session, role]);
 
-  // While auth is resolving, or while a driver/admin is about to be redirected
   if (status === "loading" || role === "driver" || role === "admin" || role === "superadmin") {
     return (
       <main className="flex flex-col min-h-screen items-center justify-center"
@@ -114,7 +119,6 @@ export default function Home() {
     );
   }
 
-  // Signed out — show sign-in landing instead of dashboard content
   if (!session) {
     return (
       <main className="flex flex-col min-h-screen items-center justify-center px-6 relative overflow-hidden"
@@ -190,20 +194,20 @@ export default function Home() {
           {firstName} 👋
         </h1>
 
-        {/* Connect Card */}
-        <div className="rounded-2xl p-5 flex items-center justify-between relative"
-          style={{ background: "rgba(255,255,255,0.09)",
-            border: "1px solid rgba(255,255,255,0.18)",
-            backdropFilter: "blur(16px)",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
-          <div>
+        {/* Connect Card — bright, vibrant treatment */}
+        <div className="rounded-2xl p-5 flex items-center justify-between relative overflow-hidden"
+          style={{ background: "linear-gradient(135deg, #F2B705 0%, #E8941A 55%, #C27A10 100%)",
+            boxShadow: "0 10px 32px rgba(232,148,26,0.35)" }}>
+          <div className="absolute inset-0" style={{
+            background: "radial-gradient(circle at 80% 0%, rgba(255,255,255,0.25), transparent 60%)" }} />
+          <div className="relative">
             <p className="mb-1.5" style={{ fontFamily: "Space Mono, monospace",
               fontSize: "9px", letterSpacing: "0.12em", textTransform: "uppercase",
-              color: "rgba(255,255,255,0.5)" }}>
+              color: "rgba(26,18,8,0.6)" }}>
               Connect Card Balance
             </p>
-            <p className="text-4xl leading-none balance-glow"
-              style={{ fontFamily: "DM Serif Display, serif", color: "#E8941A" }}>
+            <p className="text-4xl leading-none"
+              style={{ fontFamily: "DM Serif Display, serif", color: "#1A1208" }}>
               {balance === null
                 ? "..."
                 : <>₦{balance.toLocaleString()}<span className="text-lg opacity-60">.00</span></>
@@ -211,23 +215,22 @@ export default function Home() {
             </p>
             <div className="flex items-center gap-2 mt-3">
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                style={{ background: "rgba(26,107,60,0.35)",
-                  fontFamily: "Space Mono, monospace", fontSize: "8px", color: "#90EE90" }}>
+                style={{ background: "rgba(26,18,8,0.15)",
+                  fontFamily: "Space Mono, monospace", fontSize: "8px", color: "#1A1208" }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse"
-                  style={{ background: "#90EE90" }} />
+                  style={{ background: "#1A6B3C" }} />
                 Active
               </span>
               <span style={{ fontFamily: "Space Mono, monospace",
-                fontSize: "9px", color: "rgba(255,255,255,0.35)" }}>
+                fontSize: "9px", color: "rgba(26,18,8,0.45)" }}>
                 •••• 4821
               </span>
             </div>
           </div>
           <Link href="/transport/topup">
-            <div className="tile-lift w-11 h-8 rounded-lg flex items-center justify-center text-xs font-bold cursor-pointer"
-              style={{ background: "linear-gradient(135deg, #E8941A, #C27A10)",
-                color: "#fff", fontSize: "9px",
-                boxShadow: "0 4px 14px rgba(232,148,26,0.35)" }}>
+            <div className="tile-lift w-11 h-8 rounded-lg flex items-center justify-center text-xs font-bold cursor-pointer relative"
+              style={{ background: "#1A1208", color: "#fff", fontSize: "9px",
+                boxShadow: "0 4px 14px rgba(0,0,0,0.3)" }}>
               TOP UP
             </div>
           </Link>
@@ -281,9 +284,16 @@ export default function Home() {
                   Environment
                 </span>
                 <span className="text-xs" style={{ color: "rgba(253,250,245,0.5)" }}>
-                  Report issues to ASEPA instantly
+                  {reportStats ? `${reportStats.total} reports filed` : "Report issues instantly"}
                 </span>
-                <div className="flex items-center justify-end mt-1">
+                <div className="flex items-center justify-between mt-1">
+                  {reportStats && (
+                    <span className="px-2 py-0.5 rounded-full"
+                      style={{ background: "rgba(232,148,26,0.25)",
+                        fontFamily: "Space Mono, monospace", fontSize: "8px", color: "#E8941A" }}>
+                      {reportStats.total > 0 ? Math.round((reportStats.resolved / reportStats.total) * 100) : 0}% resolved
+                    </span>
+                  )}
                   <span style={{ color: "rgba(253,250,245,0.4)", fontSize: "15px" }}>→</span>
                 </div>
               </div>

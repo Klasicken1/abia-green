@@ -41,8 +41,7 @@ export default async function TrackPage({
 
   const statusSteps = [
     { key: "pending",     label: "Report Submitted",  sub: "Received by AEIS" },
-    { key: "assigned",    label: "Routed to ASEPA",   sub: "Field coordinator notified" },
-    { key: "in_progress", label: "Crew Dispatched",   sub: "Team on the way" },
+{ key: "assigned",    label: "Routed to Responsible Ministry",   sub: "Field coordinator notified" },    { key: "in_progress", label: "Crew Dispatched",   sub: "Team on the way" },
     { key: "resolved",    label: "Resolved",          sub: "Issue addressed" },
   ];
 

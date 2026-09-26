@@ -25,20 +25,16 @@ export default function EnvironmentPage() {
   const [trackingId, setTrackingId]     = useState("");
   const [loading, setLoading]           = useState(false);
 
-  // Honeypot — a real citizen never sees or fills this field (it's visually
-  // hidden but still in the DOM and tabbable-excluded). A bot that
-  // auto-fills every input on the page will fill it, and the server
-  // rejects the submission silently when it's non-empty.
   const [website, setWebsite] = useState("");
 
-  // --- Photo upload state ---
   const [photoFile, setPhotoFile]         = useState<File | null>(null);
   const [photoPreview, setPhotoPreview]   = useState<string | null>(null);
   const [photoUrl, setPhotoUrl]           = useState<string | null>(null);
   const [photoPublicId, setPhotoPublicId] = useState<string | null>(null);
   const [uploading, setUploading]         = useState(false);
   const [uploadError, setUploadError]     = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -57,12 +53,13 @@ export default function EnvironmentPage() {
     setPhotoUrl(null);
     setPhotoPublicId(null);
     setUploadError(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+    if (galleryInputRef.current) galleryInputRef.current.value = "";
   }
 
   async function uploadPhotoIfNeeded(): Promise<string | null> {
     if (!photoFile) return null;
-    if (photoUrl) return photoUrl; // already uploaded
+    if (photoUrl) return photoUrl;
 
     setUploading(true);
     setUploadError(null);
@@ -97,14 +94,12 @@ export default function EnvironmentPage() {
     setLoading(true);
 
     try {
-      // Upload photo first if one is attached and not yet uploaded
       let finalPhotoUrl = photoUrl;
       let finalPhotoPublicId = photoPublicId;
       if (photoFile && !photoUrl) {
         finalPhotoUrl = await uploadPhotoIfNeeded();
         finalPhotoPublicId = photoPublicId;
         if (!finalPhotoUrl) {
-          // Upload failed — stop here, let the user see the error and retry/remove
           setLoading(false);
           return;
         }
@@ -160,7 +155,7 @@ export default function EnvironmentPage() {
             Report Received
           </h1>
           <p className="text-sm" style={{ color: "rgba(253,250,245,0.5)" }}>
-            Routed to ASEPA · {lga} LGA
+            Routed to the Responsible Ministry · {lga} LGA
           </p>
         </div>
 
@@ -186,7 +181,7 @@ export default function EnvironmentPage() {
                 { label: "Type",      value: REPORT_TYPES.find(t => t.value === selectedType)?.name || "" },
                 { label: "LGA",       value: lga },
                 { label: "Severity",  value: severity.charAt(0).toUpperCase() + severity.slice(1) },
-                { label: "Status",    value: "Pending — ASEPA notified" },
+                { label: "Status",    value: "Pending — Ministry notified" },
               ].map((row, i) => (
                 <div key={i} className="flex justify-between items-center py-2"
                   style={{ borderBottom: i < 3 ? "1px solid rgba(26,18,8,0.06)" : "none" }}>
@@ -212,7 +207,7 @@ export default function EnvironmentPage() {
             </p>
             {[
               { label: "Report Submitted",  sub: "Just now",                done: true,  active: false },
-              { label: "Routed to ASEPA",   sub: "In review",               done: false, active: true  },
+              { label: "Routed to Responsible Ministry", sub: "In review",  done: false, active: true  },
               { label: "Crew Dispatched",   sub: "Pending",                 done: false, active: false },
               { label: "Resolved",          sub: "Target: within 48 hours", done: false, active: false },
             ].map((step, i) => (
@@ -270,16 +265,13 @@ export default function EnvironmentPage() {
           Submit a Report
         </h1>
         <p className="text-xs mt-1" style={{ color: "rgba(253,250,245,0.45)" }}>
-          Photo · GPS · Routed to ASEPA instantly
+          Photo · GPS · Routed to the Responsible Ministry instantly
         </p>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4">
         <form onSubmit={handleSubmit}>
 
-          {/* Honeypot — visually and functionally hidden from real users.
-              A real citizen can never focus or fill this; a bot that
-              blindly fills every field on the page will. */}
           <div
             style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", overflow: "hidden" }}
             aria-hidden="true"
@@ -377,8 +369,18 @@ export default function EnvironmentPage() {
             Photo
           </p>
 
+          {/* Camera capture — forces the device camera on mobile */}
           <input
-            ref={fileInputRef}
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoSelect}
+            className="hidden"
+          />
+          {/* Gallery picker — no capture attribute, so it opens the file/photo library */}
+          <input
+            ref={galleryInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             onChange={handlePhotoSelect}
@@ -386,21 +388,30 @@ export default function EnvironmentPage() {
           />
 
           {!photoPreview ? (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full rounded-xl p-4 mb-6 text-center"
-              style={{ border: "2px dashed rgba(26,18,8,0.15)", background: "#fff" }}
-            >
-              <div className="text-2xl mb-1">📷</div>
-              <p className="text-xs font-semibold" style={{ color: "#1A6B3C" }}>
-                Tap to attach a photo
-              </p>
-              <p style={{ fontFamily: "Space Mono, monospace", fontSize: "9px",
-                color: "#8B7355", marginTop: "4px" }}>
-                JPG, PNG, or WEBP · Max 8MB
-              </p>
-            </button>
+            <div className="grid grid-cols-2 gap-2 mb-6">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="rounded-xl p-4 text-center"
+                style={{ border: "2px dashed rgba(26,18,8,0.15)", background: "#fff" }}
+              >
+                <div className="text-2xl mb-1">📷</div>
+                <p className="text-xs font-semibold" style={{ color: "#1A6B3C" }}>
+                  Take Photo
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => galleryInputRef.current?.click()}
+                className="rounded-xl p-4 text-center"
+                style={{ border: "2px dashed rgba(26,18,8,0.15)", background: "#fff" }}
+              >
+                <div className="text-2xl mb-1">🖼️</div>
+                <p className="text-xs font-semibold" style={{ color: "#1A6B3C" }}>
+                  Choose from Gallery
+                </p>
+              </button>
+            </div>
           ) : (
             <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid rgba(26,18,8,0.1)" }}>
               <img src={photoPreview} alt="Selected photo" className="w-full h-48 object-cover" />
@@ -425,7 +436,7 @@ export default function EnvironmentPage() {
               {uploadError}
             </p>
           )}
-          {!uploadError && <div className="mb-4" />}
+          {!uploadError && photoPreview && <div className="mb-4" />}
 
           <button type="submit" disabled={loading || uploading}
             className="w-full py-4 rounded-xl text-sm font-bold"
