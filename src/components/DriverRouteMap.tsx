@@ -4,10 +4,12 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ROUTES as LINE_ROUTES } from "@/components/TransportMap";
 import { ROUTES as ROUTE_INFO } from "@/lib/routesData";
+import { parseMinutesLabel } from "@/lib/stopTiming";
 
 interface DriverRouteMapProps {
   routeId: string;
   progress: number; // 0-100
+  highlightStopIndex?: number;
 }
 
 function pointAtFraction(coords: number[][], fraction: number): [number, number] {
@@ -34,18 +36,6 @@ function pointAtFraction(coords: number[][], fraction: number): [number, number]
     target -= segmentLengths[i];
   }
   return [coords[coords.length - 1][0], coords[coords.length - 1][1]];
-}
-
-// Parses labels like "Departure", "~15 min", "~2 hrs" into minutes, so a
-// stop's rough position along the route can be estimated proportionally.
-// This is an approximation until stops are individually geo-surveyed —
-// good enough to orient a driver, not a precision GPS fix.
-function parseMinutesLabel(label: string): number {
-  if (/departure/i.test(label)) return 0;
-  const hrMatch = label.match(/(\d+(?:\.\d+)?)\s*hr/i);
-  if (hrMatch) return parseFloat(hrMatch[1]) * 60;
-  const minMatch = label.match(/(\d+)/);
-  return minMatch ? parseInt(minMatch[1], 10) : 0;
 }
 
 const CITY_CENTERS: Record<string, [number, number]> = {
@@ -85,18 +75,16 @@ function createBusMarkerElement(): HTMLDivElement {
   return wrapper;
 }
 
-function createStopMarkerElement(name: string): HTMLDivElement {
+function createStopMarkerElement(name: string, highlighted: boolean): HTMLDivElement {
   const el = document.createElement("div");
-  el.style.cssText = `
-    width: 14px; height: 14px; border-radius: 50%;
-    background: #fff; border: 3px solid #1A6B3C;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
-  `;
+  el.style.cssText = highlighted
+    ? `width: 18px; height: 18px; border-radius: 50%; background: #E8941A; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(232,148,26,0.5);`
+    : `width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid #1A6B3C; box-shadow: 0 1px 4px rgba(0,0,0,0.25);`;
   el.title = name;
   return el;
 }
 
-export default function DriverRouteMap({ routeId, progress }: DriverRouteMapProps) {
+export default function DriverRouteMap({ routeId, progress, highlightStopIndex }: DriverRouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const marker = useRef<mapboxgl.Marker | null>(null);
@@ -106,7 +94,14 @@ export default function DriverRouteMap({ routeId, progress }: DriverRouteMapProp
   const cityCenter = CITY_CENTERS[routeId];
 
   useEffect(() => {
-    if (typeof window === "undefined" || !mapContainer.current || map.current) return;
+    if (typeof window === "undefined" || !mapContainer.current) return;
+
+    // Rebuild when the selected stop changes too — stop markers are
+    // created once at load, and this is infrequent enough not to matter.
+    if (map.current) {
+      map.current.remove();
+      map.current = null;
+    }
 
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
@@ -150,14 +145,12 @@ export default function DriverRouteMap({ routeId, progress }: DriverRouteMapProp
         );
         map.current.fitBounds(bounds, { padding: 60 });
 
-        // Checkpoint / stop markers — positioned proportionally along the
-        // route line based on each stop's rough time-from-departure.
         if (routeInfo) {
           const totalMinutes = parseMinutesLabel(routeInfo.duration);
-          routeInfo.stops.forEach(stop => {
+          routeInfo.stops.forEach((stop, i) => {
             const fraction = totalMinutes > 0 ? parseMinutesLabel(stop.time) / totalMinutes : 0;
             const pos = pointAtFraction(lineRoute.coordinates, fraction);
-            new mapboxgl.Marker({ element: createStopMarkerElement(stop.name) })
+            new mapboxgl.Marker({ element: createStopMarkerElement(stop.name, i === highlightStopIndex) })
               .setLngLat(pos)
               .setPopup(
                 new mapboxgl.Popup({ offset: 14 }).setHTML(
@@ -182,7 +175,7 @@ export default function DriverRouteMap({ routeId, progress }: DriverRouteMapProp
       map.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeId]);
+  }, [routeId, highlightStopIndex]);
 
   useEffect(() => {
     if (!marker.current || !lineRoute) return;

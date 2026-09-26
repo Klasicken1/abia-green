@@ -3,6 +3,9 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
+import { ROUTES as ROUTE_INFO } from "@/lib/routesData";
+import { parseNairaFare, calculateBoardingFare } from "@/lib/fare";
+import { estimateMinutesToStop } from "@/lib/stopTiming";
 
 const TransportMap = dynamic(() => import("@/components/TransportMap"), {
   ssr: false,
@@ -13,6 +16,15 @@ const TransportMap = dynamic(() => import("@/components/TransportMap"), {
       <span className="text-sm font-semibold" style={{ color: "#0F3D22" }}>
         Loading map...
       </span>
+    </div>
+  ),
+});
+
+const BusDetailMap = dynamic(() => import("@/components/DriverRouteMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center" style={{ background: "#0F3D22" }}>
+      <span className="text-xs" style={{ color: "rgba(253,250,245,0.6)" }}>Loading map…</span>
     </div>
   ),
 });
@@ -32,9 +44,15 @@ interface LiveBus {
   routeLabel: string;
   status: "idle" | "on_route";
   progress: number;
-  occupancy: number;
   etaMinutes: number | null;
-  updatedAt: string;
+}
+
+interface ActiveRide {
+  busId: string;
+  busLabel: string;
+  routeLabel: string;
+  fare: number;
+  boardedAt: string;
 }
 
 const SEVERITY_BG: Record<string, string> = {
@@ -72,6 +90,12 @@ export default function TransportPage() {
   const [routeFilter, setRouteFilter] = useState<string | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
 
+  const [activeRide, setActiveRide] = useState<ActiveRide | null>(null);
+  const [gettingOff, setGettingOff] = useState(false);
+
+  const [expandedBusId, setExpandedBusId] = useState<string | null>(null);
+  const [selectedStopByBus, setSelectedStopByBus] = useState<Record<string, number>>({});
+
   useEffect(() => {
     fetch("/api/alerts")
       .then(r => r.json())
@@ -84,7 +108,11 @@ export default function TransportPage() {
       .catch(() => setBalance(null));
 
     fetchBuses();
-    const interval = setInterval(fetchBuses, 10000);
+    fetchActiveRide();
+    const interval = setInterval(() => {
+      fetchBuses();
+      fetchActiveRide();
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -93,6 +121,32 @@ export default function TransportPage() {
       .then(r => r.json())
       .then(data => setLiveBuses(Array.isArray(data) ? data : []))
       .catch(() => setLiveBuses([]));
+  }
+
+  function fetchActiveRide() {
+    fetch("/api/wallet/active-ride")
+      .then(r => r.json())
+      .then(data => setActiveRide(data.activeRide ?? null))
+      .catch(() => {});
+  }
+
+  async function handleGetOff() {
+    if (!activeRide) return;
+    setGettingOff(true);
+    try {
+      const res = await fetch("/api/wallet/disembark", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ busId: activeRide.busId }),
+      });
+      if (res.ok) {
+        setActiveRide(null);
+        fetchBuses();
+      }
+    } catch {
+      // silent — banner just stays, they can retry
+    }
+    setGettingOff(false);
   }
 
   const filteredBuses = routeFilter
@@ -145,6 +199,29 @@ export default function TransportPage() {
         </div>
       </div>
 
+      {/* Active ride banner — decoupled from the payment screen */}
+      {activeRide && (
+        <div className="px-4 pt-3">
+          <div className="flex items-center gap-3 p-3 rounded-xl"
+            style={{ background: "rgba(26,107,60,0.1)", border: "1px solid rgba(26,107,60,0.25)" }}>
+            <span className="text-xl flex-shrink-0">🚌</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold" style={{ color: "#1A1208" }}>
+                Riding {activeRide.busLabel} · {activeRide.routeLabel}
+              </p>
+              <p className="text-xs" style={{ color: "#8B7355" }}>
+                Paid ₦{activeRide.fare.toLocaleString()}
+              </p>
+            </div>
+            <button onClick={handleGetOff} disabled={gettingOff}
+              className="px-3 py-2 rounded-lg text-xs font-bold flex-shrink-0"
+              style={{ background: "#E8941A", color: "#fff" }}>
+              {gettingOff ? "..." : "I'm Getting Off"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Service Disruption Alerts */}
       {alerts.length > 0 && (
         <div className="px-4 pt-3">
@@ -192,47 +269,116 @@ export default function TransportPage() {
             </p>
           </div>
         ) : (
-          filteredBuses.map(bus => (
-            <div key={bus._id} className="flex items-center gap-3 p-3 rounded-xl mb-2"
-              style={{ background: "#fff", boxShadow: "0 2px 8px rgba(26,18,8,0.05)" }}>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "#0F3D22" }}>
-                <span style={{ fontFamily: "Space Mono, monospace", fontSize: "10px",
-                  color: "#E8941A", fontWeight: 700 }}>
-                  {bus.busId.split("-")[1] || bus.busId}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold" style={{ color: "#1A1208" }}>
-                  {bus.busId} · {bus.routeLabel}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 h-1.5 rounded-full"
-                    style={{ background: "rgba(26,18,8,0.08)" }}>
-                    <div className="h-full rounded-full"
-                      style={{
-                        width: `${bus.progress}%`,
-                        background: bus.progress > 80 ? "#E8941A" : "#1A6B3C"
-                      }} />
+          filteredBuses.map(bus => {
+            const routeInfo = ROUTE_INFO[bus.route];
+            const fullFare = routeInfo ? parseNairaFare(routeInfo.fare) : 0;
+            const quoteFare = fullFare ? calculateBoardingFare(fullFare, bus.progress) : null;
+            const isExpanded = expandedBusId === bus._id;
+            const selectedStop = selectedStopByBus[bus._id];
+
+            return (
+              <div key={bus._id} className="rounded-xl mb-2 overflow-hidden"
+                style={{ background: "#fff", boxShadow: "0 2px 8px rgba(26,18,8,0.05)" }}>
+                <button
+                  onClick={() => setExpandedBusId(isExpanded ? null : bus._id)}
+                  className="w-full flex items-center gap-3 p-3 text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: "#0F3D22" }}>
+                    <span style={{ fontFamily: "Space Mono, monospace", fontSize: "10px",
+                      color: "#E8941A", fontWeight: 700 }}>
+                      {bus.busId.split("-")[1] || bus.busId}
+                    </span>
                   </div>
-                  <span className="text-xs flex-shrink-0" style={{ color: "#8B7355" }}>
-                    {bus.progress}%
-                  </span>
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold" style={{ color: "#1A1208" }}>
+                      {bus.busId} · {bus.routeLabel}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 h-1.5 rounded-full"
+                        style={{ background: "rgba(26,18,8,0.08)" }}>
+                        <div className="h-full rounded-full"
+                          style={{
+                            width: `${bus.progress}%`,
+                            background: bus.progress > 80 ? "#E8941A" : "#1A6B3C"
+                          }} />
+                      </div>
+                      <span className="text-xs flex-shrink-0" style={{ color: "#8B7355" }}>
+                        {bus.progress}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-bold" style={{
+                      fontFamily: "DM Serif Display, serif",
+                      color: (bus.etaMinutes ?? 0) < 10 ? "#E8941A" : "#1A6B3C"
+                    }}>
+                      {bus.etaMinutes ?? "—"} min
+                    </p>
+                    {quoteFare !== null && (
+                      <p className="text-xs" style={{ color: "#8B7355" }}>
+                        ~₦{quoteFare.toLocaleString()} now
+                      </p>
+                    )}
+                  </div>
+                  <span style={{ color: "#8B7355", fontSize: "12px" }}>{isExpanded ? "▲" : "▼"}</span>
+                </button>
+
+                {isExpanded && (
+                  <div style={{ borderTop: "1px solid rgba(26,18,8,0.06)" }}>
+                    <div style={{ height: "160px" }}>
+                      <BusDetailMap
+                        routeId={bus.route}
+                        progress={bus.progress}
+                        highlightStopIndex={selectedStop}
+                      />
+                    </div>
+                    <div className="p-3">
+                      {routeInfo ? (
+                        <>
+                          <p className="text-xs mb-2" style={{
+                            fontFamily: "Space Mono, monospace", fontSize: "9px",
+                            letterSpacing: "0.08em", textTransform: "uppercase", color: "#8B7355" }}>
+                            Your stop
+                          </p>
+                          <div className="flex flex-wrap gap-1.5 mb-3">
+                            {routeInfo.stops.map((stop, i) => {
+                              const active = selectedStop === i;
+                              return (
+                                <button key={i}
+                                  onClick={() => setSelectedStopByBus(prev => ({ ...prev, [bus._id]: i }))}
+                                  className="px-2.5 py-1 rounded-full text-xs"
+                                  style={{
+                                    background: active ? "#1A6B3C" : "rgba(26,18,8,0.05)",
+                                    color: active ? "#fff" : "#1A1208",
+                                    fontFamily: "Space Mono, monospace", fontSize: "9px",
+                                  }}>
+                                  {stop.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {selectedStop !== undefined && (
+                            <div className="rounded-lg p-2 mb-1"
+                              style={{ background: "rgba(232,148,26,0.08)" }}>
+                              <p className="text-xs" style={{ color: "#C27A10" }}>
+                                ETA to {routeInfo.stops[selectedStop].name}:{" "}
+                                <strong>{estimateMinutesToStop(routeInfo, bus.progress, selectedStop)} min</strong>
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-xs" style={{ color: "#8B7355" }}>
+                          Stop-level detail isn't available for this route yet.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="text-right flex-shrink-0">
-                <p className="text-sm font-bold" style={{
-                  fontFamily: "DM Serif Display, serif",
-                  color: (bus.etaMinutes ?? 0) < 10 ? "#E8941A" : "#1A6B3C"
-                }}>
-                  {bus.etaMinutes ?? "—"} min
-                </p>
-                <p className="text-xs" style={{ color: "#8B7355" }}>
-                  {bus.occupancy} onboard
-                </p>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
 
         {/* Routes */}

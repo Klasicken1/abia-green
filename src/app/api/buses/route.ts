@@ -4,11 +4,15 @@ import { connectDB } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { Bus } from "@/lib/models/Bus";
 
-// GET — public list of all buses currently on_route (for riders)
+// GET — public list of all buses currently on_route (for riders). Trimmed
+// to only what a citizen needs to decide whether to walk to a stop: no
+// driverEmail, no occupancy, no internal tripId.
 export async function GET() {
   try {
     await connectDB();
-    const buses = await Bus.find({ status: "on_route" }).sort({ updatedAt: -1 });
+    const buses = await Bus.find({ status: "on_route" })
+      .select("_id busId route routeLabel status progress etaMinutes updatedAt")
+      .sort({ updatedAt: -1 });
     return NextResponse.json(buses);
   } catch (err) {
     console.error("GET /api/buses failed:", err);
@@ -16,7 +20,6 @@ export async function GET() {
   }
 }
 
-// POST — driver starts/updates their bus (upsert by driverEmail)
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -36,8 +39,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // A fresh trip start gets a brand-new tripId, so fare payments can be
-    // tied to this specific ride — see chargeFare() in wallet.ts.
     const isStartingTrip = status === "on_route";
 
     const bus = await Bus.findOneAndUpdate(

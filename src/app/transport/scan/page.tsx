@@ -28,9 +28,6 @@ export default function ScanPage() {
   const [chargeError, setChargeError] = useState<string | null>(null);
   const [chargeResult, setChargeResult] = useState<{ balance: number; reference: string; fare: number } | null>(null);
 
-  const [disembarking, setDisembarking] = useState(false);
-  const [disembarked, setDisembarked] = useState(false);
-
   const scanLoop = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -54,7 +51,7 @@ export default function ScanPage() {
     if (code && code.data.startsWith("abiagreen:bus:")) {
       const busId = code.data.replace("abiagreen:bus:", "");
       handleScanned(busId);
-      return; // stop the loop, we found a valid code
+      return;
     }
 
     rafRef.current = requestAnimationFrame(scanLoop);
@@ -139,28 +136,10 @@ export default function ScanPage() {
     }
   }
 
-  async function handleDisembark() {
-    if (!busInfo) return;
-    setDisembarking(true);
-    try {
-      const res = await fetch("/api/wallet/disembark", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ busId: busInfo._id }),
-      });
-      if (res.ok) setDisembarked(true);
-    } catch {
-      // silent — the "Done" button still works either way
-    }
-    setDisembarking(false);
-  }
-
   function rescan() {
     setBusInfo(null);
     setChargeError(null);
     setChargeResult(null);
-    setDisembarking(false);
-    setDisembarked(false);
     setScanState("scanning");
   }
 
@@ -272,23 +251,9 @@ export default function ScanPage() {
             <p className="text-xs mb-4" style={{ color: "#8B7355" }}>
               Ref: {chargeResult.reference} · New balance: ₦{chargeResult.balance.toLocaleString()}
             </p>
-
-            {disembarked ? (
-              <p className="text-sm font-semibold mb-3" style={{ color: "#1A6B3C" }}>
-                Thanks for riding! Ride marked complete.
-              </p>
-            ) : (
-              <button onClick={handleDisembark} disabled={disembarking}
-                className="w-full py-3 rounded-xl text-sm font-bold mb-2"
-                style={{ background: "#E8941A", color: "#fff" }}>
-                {disembarking ? "..." : "I'm Getting Off"}
-              </button>
-            )}
-
             <Link href="/transport">
               <button className="w-full py-3 rounded-xl text-sm font-bold"
-                style={{ background: disembarked ? "#1A6B3C" : "transparent", color: disembarked ? "#fff" : "#8B7355",
-                  border: disembarked ? "none" : "1px solid rgba(26,18,8,0.1)" }}>
+                style={{ background: "#1A6B3C", color: "#fff" }}>
                 Done
               </button>
             </Link>

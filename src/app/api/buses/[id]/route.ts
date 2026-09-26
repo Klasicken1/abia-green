@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { Bus } from "@/lib/models/Bus";
+import { Transaction } from "@/lib/models/Transaction";
 import { ROUTES } from "@/lib/routesData";
 import { parseNairaFare, calculateBoardingFare } from "@/lib/fare";
 
@@ -73,6 +74,19 @@ export async function PATCH(
     const filter = role === "admin"
       ? { _id: id }
       : { _id: id, driverEmail: session.user.email };
+
+    // Ending a trip closes out anyone who never tapped "I'm getting off" —
+    // the trip ending is itself the end of their ride, so their fare
+    // Transaction shouldn't sit open forever.
+    if (body.status === "idle") {
+      const existing = await Bus.findOne(filter);
+      if (existing?.tripId) {
+        await Transaction.updateMany(
+          { busId: id, tripId: existing.tripId, type: "fare", disembarkedAt: null },
+          { $set: { disembarkedAt: new Date() } }
+        );
+      }
+    }
 
     const bus = await Bus.findOneAndUpdate(filter, updates, { new: true });
 
