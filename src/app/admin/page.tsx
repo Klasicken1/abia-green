@@ -60,6 +60,25 @@ interface Incident {
   createdAt: string;
 }
 
+interface Driver {
+  email: string;
+  createdAt: string;
+  bus: {
+    busId: string;
+    routeLabel: string;
+    status: "idle" | "on_route";
+    occupancy: number;
+    updatedAt: string;
+  } | null;
+}
+
+interface Revenue {
+  allTime: { total: number; count: number };
+  today: { total: number; count: number };
+  byRoute: { route: string | null; routeLabel: string; total: number; count: number }[];
+  last7Days: { date: string; total: number; count: number }[];
+}
+
 const TYPE_LABELS: Record<string, string> = {
   illegal_dump:    "Illegal Dump",
   erosion:         "Erosion",
@@ -113,15 +132,15 @@ export default function AdminPage() {
   const initialView = searchParams.get("view") === "transport" ? "transport" : "reports";
   const [view, setView] = useState<"reports" | "transport">(initialView);
 
-  // Sub-mode inside Transport: buses (fleet oversight) or incidents (safety reports)
-  const [transportSubView, setTransportSubView] = useState<"buses" | "incidents">("buses");
+  // Sub-mode inside Transport: buses (fleet), incidents (safety),
+  // drivers (roster), revenue (fare aggregates)
+  const [transportSubView, setTransportSubView] = useState<"buses" | "incidents" | "drivers" | "revenue">("buses");
 
   const [reports, setReports]   = useState<Report[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
   const [filter, setFilter]     = useState("all");
   const [updating, setUpdating] = useState<string | null>(null);
 
-  // Reject-reason flow: which report's reason box is open, and its text
   const [rejectingId, setRejectingId]   = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
@@ -129,16 +148,19 @@ export default function AdminPage() {
   const [busesLoading, setBusesLoading] = useState(true);
   const [endingId, setEndingId] = useState<string | null>(null);
 
-  // Per-bus passenger activity panel: which bus is expanded, and cached
-  // activity data keyed by bus id (fetched once, on first expand).
   const [expandedBusId, setExpandedBusId] = useState<string | null>(null);
   const [busActivity, setBusActivity] = useState<Record<string, BusActivity>>({});
 
-  // Incident management
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [incidentsLoading, setIncidentsLoading] = useState(true);
   const [incidentFilter, setIncidentFilter] = useState("all");
   const [updatingIncidentId, setUpdatingIncidentId] = useState<string | null>(null);
+
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [driversLoading, setDriversLoading] = useState(true);
+
+  const [revenue, setRevenue] = useState<Revenue | null>(null);
+  const [revenueLoading, setRevenueLoading] = useState(true);
 
   useEffect(() => {
     const paramView = searchParams.get("view") === "transport" ? "transport" : "reports";
@@ -150,6 +172,8 @@ export default function AdminPage() {
       fetchReports();
       fetchBuses();
       fetchIncidents();
+      fetchDrivers();
+      fetchRevenue();
     }
   }, [session, isAdmin]);
 
@@ -187,6 +211,30 @@ export default function AdminPage() {
       setIncidents([]);
     }
     setIncidentsLoading(false);
+  }
+
+  async function fetchDrivers() {
+    setDriversLoading(true);
+    try {
+      const res = await fetch("/api/admin/drivers");
+      const data = await res.json();
+      setDrivers(Array.isArray(data) ? data : []);
+    } catch {
+      setDrivers([]);
+    }
+    setDriversLoading(false);
+  }
+
+  async function fetchRevenue() {
+    setRevenueLoading(true);
+    try {
+      const res = await fetch("/api/admin/revenue");
+      const data = await res.json();
+      setRevenue(data.allTime ? data : null);
+    } catch {
+      setRevenue(null);
+    }
+    setRevenueLoading(false);
   }
 
   async function updateStatus(id: string, newStatus: string, reason?: string) {
@@ -250,7 +298,7 @@ export default function AdminPage() {
         const data = await res.json();
         setBusActivity(prev => ({ ...prev, [busId]: data }));
       } catch {
-        // silent — panel shows "Loading..." indefinitely, acceptable failure mode
+        // silent
       }
     }
   }
@@ -276,7 +324,6 @@ export default function AdminPage() {
     return minutesSince > STALE_THRESHOLD_MINUTES;
   }
 
-  // Loading state
   if (status === "loading") {
     return (
       <main className="flex flex-col min-h-screen items-center justify-center"
@@ -287,7 +334,6 @@ export default function AdminPage() {
     );
   }
 
-  // Not signed in
   if (!session) {
     return (
       <main className="flex flex-col min-h-screen items-center justify-center px-4"
@@ -316,7 +362,6 @@ export default function AdminPage() {
     );
   }
 
-  // Signed in but wrong role
   if (!isAdmin) {
     return (
       <main className="flex flex-col min-h-screen items-center justify-center px-4"
@@ -425,37 +470,30 @@ export default function AdminPage() {
 
         {/* Sub-switcher, only visible inside Transport */}
         {view === "transport" && (
-          <div className="flex gap-2 mt-2">
-            <button onClick={() => setTransportSubView("buses")}
-              className="flex-1 py-1.5 rounded-lg text-xs font-semibold relative"
-              style={{
-                background: transportSubView === "buses" ? "rgba(255,255,255,0.18)" : "transparent",
-                color: transportSubView === "buses" ? "#fff" : "rgba(255,255,255,0.5)",
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}>
-              Buses
-              {staleCount > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs"
-                  style={{ background: "#C0392B", color: "#fff", fontSize: "8px" }}>
-                  {staleCount}
-                </span>
-              )}
-            </button>
-            <button onClick={() => setTransportSubView("incidents")}
-              className="flex-1 py-1.5 rounded-lg text-xs font-semibold relative"
-              style={{
-                background: transportSubView === "incidents" ? "rgba(255,255,255,0.18)" : "transparent",
-                color: transportSubView === "incidents" ? "#fff" : "rgba(255,255,255,0.5)",
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}>
-              ⚠️ Incidents
-              {incidentCounts.pending > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs"
-                  style={{ background: "#C0392B", color: "#fff", fontSize: "8px" }}>
-                  {incidentCounts.pending}
-                </span>
-              )}
-            </button>
+          <div className="flex gap-1.5 mt-2 overflow-x-auto pb-1">
+            {[
+              { key: "buses",     label: "Buses",     badge: staleCount },
+              { key: "incidents", label: "⚠️ Incidents", badge: incidentCounts.pending },
+              { key: "drivers",   label: "Drivers",   badge: 0 },
+              { key: "revenue",   label: "Revenue",   badge: 0 },
+            ].map(tab => (
+              <button key={tab.key}
+                onClick={() => setTransportSubView(tab.key as typeof transportSubView)}
+                className="flex-shrink-0 py-1.5 px-3 rounded-lg text-xs font-semibold relative"
+                style={{
+                  background: transportSubView === tab.key ? "rgba(255,255,255,0.18)" : "transparent",
+                  color: transportSubView === tab.key ? "#fff" : "rgba(255,255,255,0.5)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                }}>
+                {tab.label}
+                {tab.badge > 0 && (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs"
+                    style={{ background: "#C0392B", color: "#fff", fontSize: "8px" }}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -488,7 +526,6 @@ export default function AdminPage() {
 
           <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4">
 
-            {/* Filter chips */}
             <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
               {[
                 { key: "all",             label: "All"            },
@@ -688,7 +725,6 @@ export default function AdminPage() {
         </>
       ) : transportSubView === "buses" ? (
         <>
-          {/* Transport stats strip */}
           <div className="grid grid-cols-3 gap-0"
             style={{ background: "#0F3D22", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
             {[
@@ -879,9 +915,8 @@ export default function AdminPage() {
             )}
           </div>
         </>
-      ) : (
+      ) : transportSubView === "incidents" ? (
         <>
-          {/* Incidents stats strip */}
           <div className="grid grid-cols-4 gap-0"
             style={{ background: "#0F3D22", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
             {[
@@ -907,7 +942,6 @@ export default function AdminPage() {
 
           <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4">
 
-            {/* Filter chips */}
             <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
               {[
                 { key: "all",       label: "All"       },
@@ -1034,6 +1068,196 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        </>
+      ) : transportSubView === "drivers" ? (
+        <>
+          <div className="grid grid-cols-3 gap-0"
+            style={{ background: "#0F3D22", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            {[
+              { label: "Total",     count: drivers.length,                                   color: "#fff"    },
+              { label: "On Route",  count: drivers.filter(d => d.bus?.status === "on_route").length, color: "#E8941A" },
+              { label: "Unassigned",count: drivers.filter(d => !d.bus).length,                color: "#8B7355" },
+            ].map((s, i) => (
+              <div key={i} className="py-3 text-center"
+                style={{ borderRight: i < 2 ? "1px solid rgba(255,255,255,0.08)" : "none" }}>
+                <p className="text-xl font-bold"
+                  style={{ fontFamily: "DM Serif Display, serif", color: s.color }}>
+                  {s.count}
+                </p>
+                <p style={{ fontFamily: "Space Mono, monospace", fontSize: "8px",
+                  letterSpacing: "0.08em", textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.4)" }}>
+                  {s.label}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4">
+            <button onClick={fetchDrivers}
+              className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-xl text-xs"
+              style={{ background: "rgba(26,107,60,0.08)", color: "#1A6B3C",
+                border: "1px solid rgba(26,107,60,0.2)",
+                fontFamily: "Space Mono, monospace" }}>
+              ↻ Refresh Drivers
+            </button>
+
+            {driversLoading ? (
+              <div className="text-center py-12">
+                <div className="text-3xl mb-3">⏳</div>
+                <p className="text-sm" style={{ color: "#8B7355" }}>Loading drivers...</p>
+              </div>
+            ) : drivers.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-3xl mb-3">🧑‍✈️</div>
+                <p className="text-sm font-semibold mb-1" style={{ color: "#1A1208" }}>
+                  No drivers yet
+                </p>
+                <p className="text-xs" style={{ color: "#8B7355" }}>
+                  Invite a driver from the Invites page to see them here.
+                </p>
+              </div>
+            ) : (
+              drivers.map(d => (
+                <div key={d.email} className="rounded-xl overflow-hidden mb-3 px-4 py-3"
+                  style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.06)" }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-semibold" style={{ color: "#1A1208" }}>
+                      {d.email}
+                    </span>
+                    {d.bus ? (
+                      <span className="px-2 py-0.5 rounded-full text-xs capitalize"
+                        style={{
+                          background: d.bus.status === "on_route" ? "rgba(232,148,26,0.12)" : "rgba(139,115,85,0.12)",
+                          color: d.bus.status === "on_route" ? "#E8941A" : "#8B7355",
+                          fontFamily: "Space Mono, monospace", fontSize: "8px",
+                        }}>
+                        {d.bus.status.replace("_", " ")}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-xs"
+                        style={{ background: "rgba(139,115,85,0.1)", color: "#8B7355",
+                          fontFamily: "Space Mono, monospace", fontSize: "8px" }}>
+                        Unassigned
+                      </span>
+                    )}
+                  </div>
+                  {d.bus ? (
+                    <p className="text-xs" style={{ color: "#8B7355" }}>
+                      {d.bus.busId} · {d.bus.routeLabel} · {d.bus.occupancy} onboard
+                    </p>
+                  ) : (
+                    <p className="text-xs" style={{ color: "#8B7355" }}>
+                      No bus assigned yet — appears once they start a trip.
+                    </p>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4">
+            <button onClick={fetchRevenue}
+              className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-xl text-xs"
+              style={{ background: "rgba(26,107,60,0.08)", color: "#1A6B3C",
+                border: "1px solid rgba(26,107,60,0.2)",
+                fontFamily: "Space Mono, monospace" }}>
+              ↻ Refresh Revenue
+            </button>
+
+            {revenueLoading ? (
+              <div className="text-center py-12">
+                <div className="text-3xl mb-3">⏳</div>
+                <p className="text-sm" style={{ color: "#8B7355" }}>Loading revenue...</p>
+              </div>
+            ) : !revenue ? (
+              <div className="text-center py-12">
+                <p className="text-sm" style={{ color: "#8B7355" }}>Failed to load revenue data.</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="rounded-xl p-4" style={{ background: "#0F3D22" }}>
+                    <p style={{ fontFamily: "Space Mono, monospace", fontSize: "8px",
+                      letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)" }}>
+                      Today
+                    </p>
+                    <p className="text-xl mt-1" style={{ fontFamily: "DM Serif Display, serif", color: "#E8941A" }}>
+                      ₦{revenue.today.total.toLocaleString()}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
+                      {revenue.today.count} fares
+                    </p>
+                  </div>
+                  <div className="rounded-xl p-4" style={{ background: "#1A6B3C" }}>
+                    <p style={{ fontFamily: "Space Mono, monospace", fontSize: "8px",
+                      letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)" }}>
+                      All Time
+                    </p>
+                    <p className="text-xl mt-1" style={{ fontFamily: "DM Serif Display, serif", color: "#fff" }}>
+                      ₦{revenue.allTime.total.toLocaleString()}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.6)" }}>
+                      {revenue.allTime.count} fares
+                    </p>
+                  </div>
+                </div>
+
+                <p className="flex items-center gap-2 mb-3" style={{
+                  fontFamily: "Space Mono, monospace", fontSize: "9px",
+                  letterSpacing: "0.14em", textTransform: "uppercase", color: "#C27A10" }}>
+                  <span className="inline-block w-3.5 h-0.5" style={{ background: "#C27A10" }} />
+                  Last 7 Days
+                </p>
+                {revenue.last7Days.length === 0 ? (
+                  <p className="text-xs mb-4" style={{ color: "#8B7355" }}>No fares collected in the last 7 days.</p>
+                ) : (
+                  <div className="rounded-xl overflow-hidden mb-4"
+                    style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.05)" }}>
+                    {revenue.last7Days.map((d, i) => (
+                      <div key={d.date} className="flex items-center justify-between px-4 py-2.5"
+                        style={{ borderBottom: i < revenue.last7Days.length - 1 ? "1px solid rgba(26,18,8,0.06)" : "none" }}>
+                        <span className="text-xs" style={{ color: "#8B7355", fontFamily: "Space Mono, monospace" }}>
+                          {d.date}
+                        </span>
+                        <span className="text-xs font-semibold" style={{ color: "#1A1208" }}>
+                          ₦{d.total.toLocaleString()} · {d.count} fares
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="flex items-center gap-2 mb-3" style={{
+                  fontFamily: "Space Mono, monospace", fontSize: "9px",
+                  letterSpacing: "0.14em", textTransform: "uppercase", color: "#C27A10" }}>
+                  <span className="inline-block w-3.5 h-0.5" style={{ background: "#C27A10" }} />
+                  By Route
+                </p>
+                {revenue.byRoute.length === 0 ? (
+                  <p className="text-xs" style={{ color: "#8B7355" }}>No route-level revenue yet.</p>
+                ) : (
+                  <div className="rounded-xl overflow-hidden"
+                    style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.05)" }}>
+                    {revenue.byRoute.map((r, i) => (
+                      <div key={r.route ?? i} className="flex items-center justify-between px-4 py-3"
+                        style={{ borderBottom: i < revenue.byRoute.length - 1 ? "1px solid rgba(26,18,8,0.06)" : "none" }}>
+                        <div>
+                          <p className="text-xs font-semibold" style={{ color: "#1A1208" }}>{r.routeLabel}</p>
+                          <p className="text-xs" style={{ color: "#8B7355" }}>{r.count} fares</p>
+                        </div>
+                        <span className="text-sm font-bold" style={{ fontFamily: "DM Serif Display, serif", color: "#1A6B3C" }}>
+                          ₦{r.total.toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </>
