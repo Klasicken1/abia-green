@@ -24,6 +24,7 @@ export default function EnvironmentPage() {
   const [submitted, setSubmitted]       = useState(false);
   const [trackingId, setTrackingId]     = useState("");
   const [loading, setLoading]           = useState(false);
+  const [copied, setCopied]             = useState(false);
 
   const [website, setWebsite] = useState("");
 
@@ -131,6 +132,16 @@ export default function EnvironmentPage() {
     setLoading(false);
   }
 
+  async function handleCopyTrackingId() {
+    try {
+      await navigator.clipboard.writeText(trackingId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API unavailable — the ID is still visible on screen to copy manually
+    }
+  }
+
   function resetForm() {
     setSubmitted(false);
     setSelectedType("illegal_dump");
@@ -139,6 +150,7 @@ export default function EnvironmentPage() {
     setDescription("");
     setTrackingId("");
     setWebsite("");
+    setCopied(false);
     removePhoto();
   }
 
@@ -168,8 +180,21 @@ export default function EnvironmentPage() {
                 color: "rgba(255,255,255,0.6)", marginBottom: "4px" }}>
                 Tracking ID
               </p>
-              <p className="text-2xl" style={{ fontFamily: "DM Serif Display, serif", color: "#E8941A" }}>
-                {trackingId}
+              <div className="flex items-center justify-between">
+                <p className="text-2xl" style={{ fontFamily: "DM Serif Display, serif", color: "#E8941A" }}>
+                  {trackingId}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleCopyTrackingId}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+                  style={{ background: "rgba(255,255,255,0.12)", color: "#fff" }}
+                >
+                  {copied ? "✓ Copied" : "📋 Copy"}
+                </button>
+              </div>
+              <p className="text-xs mt-2" style={{ color: "rgba(255,255,255,0.55)" }}>
+                Save this ID — you&apos;ll need it to track your report&apos;s progress later.
               </p>
             </div>
             {photoUrl && (
@@ -369,7 +394,6 @@ export default function EnvironmentPage() {
             Photo
           </p>
 
-          {/* Camera capture — forces the device camera on mobile */}
           <input
             ref={cameraInputRef}
             type="file"
@@ -378,7 +402,6 @@ export default function EnvironmentPage() {
             onChange={handlePhotoSelect}
             className="hidden"
           />
-          {/* Gallery picker — no capture attribute, so it opens the file/photo library */}
           <input
             ref={galleryInputRef}
             type="file"
