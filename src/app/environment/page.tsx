@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import BottomNav from "@/components/BottomNav";
 import Link from "next/link";
 
@@ -25,6 +25,7 @@ export default function EnvironmentPage() {
   const [trackingId, setTrackingId]     = useState("");
   const [loading, setLoading]           = useState(false);
   const [copied, setCopied]             = useState(false);
+  const [reportStats, setReportStats]   = useState<{ total: number; resolved: number } | null>(null);
 
   const [website, setWebsite] = useState("");
 
@@ -36,6 +37,13 @@ export default function EnvironmentPage() {
   const [uploadError, setUploadError]     = useState<string | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch("/api/reports/stats")
+      .then(r => r.json())
+      .then(data => setReportStats(data.total !== undefined ? data : null))
+      .catch(() => setReportStats(null));
+  }, []);
 
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -478,32 +486,37 @@ export default function EnvironmentPage() {
           </button>
         </form>
 
-        <div className="rounded-2xl p-4 mt-4"
-          style={{ background: "#fff", boxShadow: "0 4px 16px rgba(26,18,8,0.06)" }}>
-          <p className="flex items-center gap-2 mb-3" style={{
-            fontFamily: "Space Mono, monospace", fontSize: "9px",
-            letterSpacing: "0.14em", textTransform: "uppercase", color: "#C27A10" }}>
-            <span className="inline-block w-3.5 h-0.5" style={{ background: "#C27A10" }} />
-            2025 Overview
-          </p>
-          <div className="grid grid-cols-3 text-center divide-x divide-gray-100">
-            {[
-              { val: "527", lbl: "Reports" },
-              { val: "71%", lbl: "Resolved" },
-              { val: "47",  lbl: "Erosion Sites" },
-            ].map((s, i) => (
-              <div key={i}>
+        {reportStats && (
+          <div className="rounded-2xl p-4 mt-4"
+            style={{ background: "#fff", boxShadow: "0 4px 16px rgba(26,18,8,0.06)" }}>
+            <p className="flex items-center gap-2 mb-3" style={{
+              fontFamily: "Space Mono, monospace", fontSize: "9px",
+              letterSpacing: "0.14em", textTransform: "uppercase", color: "#C27A10" }}>
+              <span className="inline-block w-3.5 h-0.5" style={{ background: "#C27A10" }} />
+              Platform Overview
+            </p>
+            <div className="grid grid-cols-2 text-center divide-x divide-gray-100">
+              <div>
                 <p className="text-lg" style={{ fontFamily: "DM Serif Display, serif", color: "#E8941A" }}>
-                  {s.val}
+                  {reportStats.total}
                 </p>
                 <p className="text-xs mt-0.5" style={{ fontFamily: "Space Mono, monospace",
                   fontSize: "8px", textTransform: "uppercase", color: "#8B7355" }}>
-                  {s.lbl}
+                  Reports Filed
                 </p>
               </div>
-            ))}
+              <div>
+                <p className="text-lg" style={{ fontFamily: "DM Serif Display, serif", color: "#1A6B3C" }}>
+                  {reportStats.total > 0 ? Math.round((reportStats.resolved / reportStats.total) * 100) : 0}%
+                </p>
+                <p className="text-xs mt-0.5" style={{ fontFamily: "Space Mono, monospace",
+                  fontSize: "8px", textTransform: "uppercase", color: "#8B7355" }}>
+                  Resolved
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <BottomNav />
