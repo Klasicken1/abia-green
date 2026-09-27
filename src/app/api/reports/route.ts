@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
+import { auth } from "@/lib/auth";
 import { Report } from "@/lib/models/Report";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { requireRole } from "@/lib/rbac";
@@ -28,8 +29,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { type, lga, severity, description, photoUrl, photoPublicId, website } = body;
 
-    // Honeypot: a hidden field named "website" that only a bot would fill.
-    // No-op until the form renders it client-side.
     if (website) {
       return NextResponse.json({ error: "Failed to submit report" }, { status: 400 });
     }
@@ -41,17 +40,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // High-severity reports need photo evidence before they go live on the
-    // public dashboard.
     const needsReview = (severity === "high" || severity === "critical") && !photoUrl;
 
-    // Cheap duplicate signal — same type + LGA within the last 30 minutes.
     const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
     const recentSimilar = await Report.findOne({
       type, lga, createdAt: { $gte: thirtyMinAgo },
     });
 
     const trackingId = generateId();
+
+    // Sign-in is never required to submit a report — but if the submitter
+    // happens to be signed in, attach their email so they get "My Reports"
+    // and status-change notifications. Anonymous submissions stay anonymous.
+    const session = await auth();
+    const userEmail = session?.user?.email || null;
 
     const report = await Report.create({
       trackingId,
@@ -61,6 +63,7 @@ export async function POST(req: NextRequest) {
       description: description || "",
       photoUrl: photoUrl || null,
       photoPublicId: photoPublicId || null,
+      userEmail,
       status: needsReview ? "pending_review" : "pending",
       possibleDuplicate: !!recentSimilar,
     });

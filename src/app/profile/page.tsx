@@ -86,6 +86,7 @@ export default function ProfilePage() {
               {[
                 { icon: "💳", label: "My Connect Card",  href: "/transport" },
                 { icon: "🧭", label: "My Journeys",      href: "/journeys" },
+                { icon: "📋", label: "My Reports",       href: "/reports/mine" },
                 { icon: "🗺️", label: "Track a Report",   href: "/track" },
                 { icon: "🔔", label: "Notifications",    href: "/profile/notifications" },
               ].map((item, i, arr) => (

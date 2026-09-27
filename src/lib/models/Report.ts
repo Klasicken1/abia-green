@@ -9,24 +9,21 @@ const ReportSchema = new mongoose.Schema({
   photoUrl:      { type: String, default: null },
   photoPublicId: { type: String, default: null },
 
-  // Existing statuses (pending, assigned, in_progress, resolved) are kept
-  // exactly as-is so nothing already in the DB or the admin dashboard's
-  // filter tabs breaks. Two new values are added for moderation:
-  // "pending_review" (not yet visible/actionable — awaiting admin approval)
-  // and "rejected" (spam/abuse, moderated out).
+  // Optional — set only when the submitter was signed in at the time of
+  // submission. Anonymous submissions (the default, no sign-in required)
+  // leave this null: no "My Reports" entry, no push notifications, by design.
+  userEmail: { type: String, default: null },
+
   status: {
     type: String,
     enum: ["pending_review", "pending", "assigned", "in_progress", "resolved", "rejected"],
     default: "pending",
   },
 
-  // Moderation audit trail — who approved/rejected a held report, and when
   moderatedBy: { type: String, default: null },
   moderatedAt: { type: Date, default: null },
   rejectionReason: { type: String, default: null },
 
-  // Cheap duplicate signal: same LGA + type within a short window gets
-  // flagged for admin attention, never auto-rejected
   possibleDuplicate: { type: Boolean, default: false },
 
   createdAt: { type: Date, default: Date.now },
