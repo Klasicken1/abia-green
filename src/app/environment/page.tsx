@@ -157,43 +157,48 @@ export default function EnvironmentPage() {
   if (submitted) {
     return (
       <main className="flex flex-col min-h-screen" style={{ background: "#F7F3EC" }}>
-        <div className="px-5 pt-12 pb-8 text-center" style={{ background: "#0F3D22" }}>
-          <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl mx-auto mb-4"
+        <div className="relative px-5 pt-12 pb-8 text-center overflow-hidden"
+          style={{ background: "linear-gradient(160deg, #0F3D22 0%, #1A6B3C 100%)" }}>
+          <div className="hero-glow" />
+          <div className="relative w-16 h-16 rounded-full flex items-center justify-center text-3xl mx-auto mb-4"
             style={{ background: "rgba(232,148,26,0.2)", border: "2px solid rgba(232,148,26,0.4)" }}>
             ✅
           </div>
-          <h1 className="text-2xl text-white mb-2"
+          <h1 className="relative text-2xl text-white mb-2"
             style={{ fontFamily: "DM Serif Display, serif" }}>
             Report Received
           </h1>
-          <p className="text-sm" style={{ color: "rgba(253,250,245,0.5)" }}>
+          <p className="relative text-sm" style={{ color: "rgba(253,250,245,0.5)" }}>
             Routed to the Responsible Ministry · {lga} LGA
           </p>
         </div>
 
         <div className="flex-1 px-4 pt-4 pb-24">
-          <div className="rounded-xl overflow-hidden mb-4"
-            style={{ background: "#fff", boxShadow: "0 4px 20px rgba(26,18,8,0.08)" }}>
-            <div className="p-4" style={{ background: "#1A6B3C" }}>
-              <p style={{ fontFamily: "Space Mono, monospace", fontSize: "9px",
+          <div className="rounded-2xl overflow-hidden mb-4"
+            style={{ background: "#fff", boxShadow: "0 6px 24px rgba(26,18,8,0.1)" }}>
+            <div className="p-4 relative overflow-hidden"
+              style={{ background: "linear-gradient(135deg, #1C1108 0%, #0F3D22 55%, #1A1208 100%)" }}>
+              <div className="absolute inset-0" style={{
+                background: "linear-gradient(115deg, transparent 40%, rgba(232,148,26,0.12) 50%, transparent 60%)" }} />
+              <p className="relative" style={{ fontFamily: "Space Mono, monospace", fontSize: "9px",
                 letterSpacing: "0.1em", textTransform: "uppercase",
-                color: "rgba(255,255,255,0.6)", marginBottom: "4px" }}>
+                color: "rgba(232,148,26,0.7)", marginBottom: "4px" }}>
                 Tracking ID
               </p>
-              <div className="flex items-center justify-between">
-                <p className="text-2xl" style={{ fontFamily: "DM Serif Display, serif", color: "#E8941A" }}>
+              <div className="relative flex items-center justify-between">
+                <p className="text-2xl" style={{ fontFamily: "DM Serif Display, serif", color: "#F2C94C" }}>
                   {trackingId}
                 </p>
                 <button
                   type="button"
                   onClick={handleCopyTrackingId}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
-                  style={{ background: "rgba(255,255,255,0.12)", color: "#fff" }}
+                  className="tile-lift flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+                  style={{ background: "rgba(255,255,255,0.1)", color: "#fff" }}
                 >
                   {copied ? "✓ Copied" : "📋 Copy"}
                 </button>
               </div>
-              <p className="text-xs mt-2" style={{ color: "rgba(255,255,255,0.55)" }}>
+              <p className="relative text-xs mt-2" style={{ color: "rgba(253,250,245,0.5)" }}>
                 Save this ID — you&apos;ll need it to track your report&apos;s progress later.
               </p>
             </div>
@@ -222,8 +227,8 @@ export default function EnvironmentPage() {
             </div>
           </div>
 
-          <div className="rounded-xl p-4 mb-4"
-            style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.05)" }}>
+          <div className="rounded-2xl p-4 mb-4"
+            style={{ background: "#fff", boxShadow: "0 4px 16px rgba(26,18,8,0.06)" }}>
             <p className="flex items-center gap-2 mb-3" style={{
               fontFamily: "Space Mono, monospace", fontSize: "9px",
               letterSpacing: "0.14em", textTransform: "uppercase", color: "#C27A10" }}>
@@ -257,12 +262,12 @@ export default function EnvironmentPage() {
           </div>
 
           <button onClick={resetForm}
-            className="w-full py-3.5 rounded-xl text-sm font-bold mb-3"
+            className="tile-lift w-full py-3.5 rounded-xl text-sm font-bold mb-3"
             style={{ background: "#1A6B3C", color: "#fff" }}>
             Submit Another Report
           </button>
           <Link href="/">
-            <button className="w-full py-3.5 rounded-xl text-sm font-semibold"
+            <button className="tile-lift w-full py-3.5 rounded-xl text-sm font-semibold"
               style={{ background: "transparent", color: "#1A6B3C",
                 border: "1.5px solid rgba(26,107,60,0.25)" }}>
               Back to Home
@@ -276,20 +281,22 @@ export default function EnvironmentPage() {
 
   return (
     <main className="flex flex-col min-h-screen" style={{ background: "#F7F3EC" }}>
-      <div className="px-5 pt-12 pb-5" style={{ background: "#3D2800" }}>
-        <Link href="/" className="text-xs mb-3 flex items-center gap-1"
+      <div className="relative px-5 pt-12 pb-6 overflow-hidden"
+        style={{ background: "linear-gradient(160deg, #3D2800 0%, #52350A 100%)" }}>
+        <div className="hero-glow" />
+        <Link href="/" className="relative text-xs mb-3 flex items-center gap-1"
           style={{ color: "rgba(253,250,245,0.5)", fontFamily: "Space Mono, monospace" }}>
           ← Back
         </Link>
-        <p className="text-xs mb-1" style={{
+        <p className="relative text-xs mb-1" style={{
           fontFamily: "Space Mono, monospace", letterSpacing: "0.12em",
-          textTransform: "uppercase", color: "rgba(232,148,26,0.8)" }}>
+          textTransform: "uppercase", color: "rgba(232,148,26,0.85)" }}>
           Platform 02 · Environment
         </p>
-        <h1 className="text-2xl text-white" style={{ fontFamily: "DM Serif Display, serif" }}>
+        <h1 className="relative text-3xl text-white" style={{ fontFamily: "DM Serif Display, serif", letterSpacing: "-0.01em" }}>
           Submit a Report
         </h1>
-        <p className="text-xs mt-1" style={{ color: "rgba(253,250,245,0.45)" }}>
+        <p className="relative text-xs mt-1" style={{ color: "rgba(253,250,245,0.5)" }}>
           Photo · GPS · Routed to the Responsible Ministry instantly
         </p>
       </div>
@@ -323,12 +330,12 @@ export default function EnvironmentPage() {
             {REPORT_TYPES.map((type) => (
               <button key={type.value} type="button"
                 onClick={() => setSelectedType(type.value)}
-                className="p-3 rounded-xl flex items-center gap-3 text-left"
+                className="tile-lift p-3 rounded-2xl flex items-center gap-3 text-left"
                 style={{
                   background: "#fff",
                   border: selectedType === type.value
                     ? "1.5px solid #E8941A" : "1.5px solid rgba(26,18,8,0.08)",
-                  boxShadow: "0 2px 8px rgba(26,18,8,0.04)",
+                  boxShadow: "0 2px 10px rgba(26,18,8,0.05)",
                 }}>
                 <span className="text-xl">{type.icon}</span>
                 <span className="text-xs font-semibold" style={{ color: "#1A1208" }}>
@@ -345,9 +352,10 @@ export default function EnvironmentPage() {
             Your LGA
           </p>
           <select value={lga} onChange={e => setLga(e.target.value)} required
-            className="w-full p-3 rounded-xl text-sm mb-4"
+            className="w-full p-3 rounded-2xl text-sm mb-4"
             style={{ background: "#fff", border: "1px solid rgba(26,18,8,0.1)",
-              color: lga ? "#1A1208" : "#8B7355", fontFamily: "Inter, sans-serif", outline: "none" }}>
+              color: lga ? "#1A1208" : "#8B7355", fontFamily: "Inter, sans-serif", outline: "none",
+              boxShadow: "0 2px 8px rgba(26,18,8,0.04)" }}>
             <option value="" disabled>Select your LGA</option>
             {LGAS.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
@@ -361,7 +369,7 @@ export default function EnvironmentPage() {
           <div className="flex gap-2 mb-4">
             {["low","moderate","high","critical"].map(s => (
               <button key={s} type="button" onClick={() => setSeverity(s)}
-                className="flex-1 py-2 rounded-lg text-center"
+                className="flex-1 py-2.5 rounded-xl text-center"
                 style={{
                   fontFamily: "Space Mono, monospace", fontSize: "8px",
                   letterSpacing: "0.06em", textTransform: "uppercase",
@@ -382,10 +390,11 @@ export default function EnvironmentPage() {
           </p>
           <textarea value={description} onChange={e => setDescription(e.target.value)}
             placeholder="Describe what you saw. Include landmarks and any relevant details."
-            rows={4} className="w-full p-3 rounded-xl text-sm mb-4"
+            rows={4} className="w-full p-3 rounded-2xl text-sm mb-4"
             style={{ background: "#fff", border: "1px solid rgba(26,18,8,0.1)",
               color: "#1A1208", fontFamily: "Inter, sans-serif",
-              outline: "none", resize: "none", lineHeight: "1.6" }} />
+              outline: "none", resize: "none", lineHeight: "1.6",
+              boxShadow: "0 2px 8px rgba(26,18,8,0.04)" }} />
 
           <p className="flex items-center gap-2 mb-2" style={{
             fontFamily: "Space Mono, monospace", fontSize: "9px",
@@ -415,7 +424,7 @@ export default function EnvironmentPage() {
               <button
                 type="button"
                 onClick={() => cameraInputRef.current?.click()}
-                className="rounded-xl p-4 text-center"
+                className="tile-lift rounded-2xl p-4 text-center"
                 style={{ border: "2px dashed rgba(26,18,8,0.15)", background: "#fff" }}
               >
                 <div className="text-2xl mb-1">📷</div>
@@ -426,7 +435,7 @@ export default function EnvironmentPage() {
               <button
                 type="button"
                 onClick={() => galleryInputRef.current?.click()}
-                className="rounded-xl p-4 text-center"
+                className="tile-lift rounded-2xl p-4 text-center"
                 style={{ border: "2px dashed rgba(26,18,8,0.15)", background: "#fff" }}
               >
                 <div className="text-2xl mb-1">🖼️</div>
@@ -436,7 +445,7 @@ export default function EnvironmentPage() {
               </button>
             </div>
           ) : (
-            <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid rgba(26,18,8,0.1)" }}>
+            <div className="rounded-2xl overflow-hidden mb-2" style={{ border: "1px solid rgba(26,18,8,0.1)" }}>
               <img src={photoPreview} alt="Selected photo" className="w-full h-48 object-cover" />
               <div className="flex items-center justify-between p-2" style={{ background: "#fff" }}>
                 <span className="text-xs" style={{ color: "#8B7355" }}>
@@ -462,14 +471,15 @@ export default function EnvironmentPage() {
           {!uploadError && photoPreview && <div className="mb-4" />}
 
           <button type="submit" disabled={loading || uploading}
-            className="w-full py-4 rounded-xl text-sm font-bold"
-            style={{ background: (loading || uploading) ? "rgba(26,107,60,0.5)" : "#1A6B3C", color: "#fff" }}>
+            className="tile-lift w-full py-4 rounded-2xl text-sm font-bold"
+            style={{ background: (loading || uploading) ? "rgba(26,107,60,0.5)" : "#1A6B3C", color: "#fff",
+              boxShadow: (loading || uploading) ? "none" : "0 6px 18px rgba(26,107,60,0.3)" }}>
             {uploading ? "Uploading photo..." : loading ? "Submitting..." : "Submit Report to AEIS →"}
           </button>
         </form>
 
-        <div className="rounded-xl p-4 mt-4"
-          style={{ background: "#fff", boxShadow: "0 2px 12px rgba(26,18,8,0.05)" }}>
+        <div className="rounded-2xl p-4 mt-4"
+          style={{ background: "#fff", boxShadow: "0 4px 16px rgba(26,18,8,0.06)" }}>
           <p className="flex items-center gap-2 mb-3" style={{
             fontFamily: "Space Mono, monospace", fontSize: "9px",
             letterSpacing: "0.14em", textTransform: "uppercase", color: "#C27A10" }}>
